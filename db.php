@@ -7,10 +7,10 @@ if (basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME'])) {
     exit;
 }
 
-$dbHost = "localhost";
-$dbName = "radiusdb";
-$dbUser = "polaris";
-$dbPass = "jsgg2u32Ks";
+$dbHost = "";
+$dbName = "";
+$dbUser = "";
+$dbPass = "";
 
 try {
 	$pdo = new PDO("mysql:host=$dbHost;dbname=$dbName", $dbUser, $dbPass);
