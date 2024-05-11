@@ -1,0 +1,125 @@
+/* Reset CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+#content {
+    min-height: 600px;
+}
+
+#login {
+    min-width: 300px;
+    max-width: 500px;
+    padding: 50px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(100px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Styling for form inputs */
+#login input[type="text"]::placeholder,
+#login input[type="password"]::placeholder {
+    color: black;
+}
+
+/* Styling for form inputs */
+#login input[type="text"],
+#login input[type="password"] {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: black;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Styling for form labels */
+#login label {
+    margin-bottom: 5px;
+}
+
+/* Styling for login button */
+#login button[type="submit"] {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background-color: #007BFF;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#login button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+
+.footer{
+  background: #152F4F;
+  color:white;
+}
+
+#navbar {
+    background-color: #152F4F;
+    color: white;
+    padding: 10px; /* Adjust padding as needed */
+}
+
+#navbar .navbar-brand {
+    color: white; /* Ensure the brand text is white */
+}
+
+.copyright p{
+border-top:1px solid rgba(255,255,255,.1);
+}
+
+#requestform {
+  max-width: 600px;
+  margin: 0 auto; /* Center the form horizontally */
+  padding: 60px; /* Add padding for better spacing */
+  border: 1px solid #ccc; /* Add a solid border */
+  border-radius: 5px; /* Add border radius for rounded corners */
+  background-color: #f9f9f9; /* Add a light background color */
+}
+
+#designed-developed {
+  display: flex;
+}
+
+#logindiv {
+  background-color: #bbb;
+}
+
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination a {
+    color: #007bff;
+    padding: 8px 16px;
+    text-decoration: none;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    margin: 0 5px;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.pagination a:hover {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.pagination .active {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
