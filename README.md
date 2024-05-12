@@ -8,7 +8,7 @@ To install and configure the Eduroam system, follow these steps:
 
 1. Clone this repository:
     ```
-    git clone git@github.com:anamolsapkota/eduroam.git
+    git clone https://github.com/anamolsapkota/eduroam.git
     ```
 
 2. Copy `db.example.php` to `db.php` and update the credentials to your Eduroam database:
