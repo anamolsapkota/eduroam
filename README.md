@@ -15,13 +15,18 @@ To install and configure the Eduroam system, follow these steps:
     ```
     cp db.example.php db.php
     ```
+    
+3. Copy `config.example.php` to `config.php` and update the credentials to your Eduroam database:
+    ```
+    cp includes/config.example.php includes/config.php
+    ```
 
-3. Change the required configurations in the `includes/config.php` file:
+4. Change the required configurations in the `includes/config.php` file:
     ```
     nano includes/config.php
     ```
 
-4. Run the initialization script:
+5. Run the initialization script:
     Visit `https://yoursite.edu.np/eduroam/includes/init.php` in your browser.
 
 ## Usage
