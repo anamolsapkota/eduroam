@@ -63,16 +63,17 @@ try {
                 // Skip the header row (first row)
                 fgetcsv($handle, 1000, ",");
                 while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    $email = $data[2];
                     $username = $data[1];
                     $fullname = $data[0];
-                    $email = $data[1];
+                    // $email = $data[1];
                     $updateby = "bulk_import";
                     $updatedate = date("Y-m-d H:i:s");
 
                     // Check if the username exists in the radcheck table
                     $checkQuery = "SELECT COUNT(*) FROM radcheck WHERE username = ?";
                     $stmt = $pdo->prepare($checkQuery);
-                    $stmt->execute([$email]);
+                    $stmt->execute([$username]);
                     $userExists = $stmt->fetchColumn();
 
                     if ($userExists == 0) {
@@ -82,7 +83,7 @@ try {
 
                         // Insert data into the radcheck table
                         $stmt = $pdo->prepare("INSERT INTO `radcheck` (`username`, `attribute`, `op`, `value`) VALUES (?, 'Cleartext-Password', ':=', ?)");
-                        $stmt->execute([$email, $password]);
+                        $stmt->execute([$username, $password]);
 
                         // Insert data into the userinfo table
                         $stmt = $pdo->prepare("INSERT INTO `userinfo` (`username`, `fullname`, `email`, `updateby`, `updatedate`) VALUES (?,?,?,?,?)");
@@ -102,7 +103,7 @@ try {
                                     <p>Here are the details to connect to Eduroam:</p>
                                     <ul>
                                         <li><strong>Network Name (SSID):</strong> eduroam</li>
-                                        <li><strong>Username: </strong>' . $email . '</li>
+                                        <li><strong>Username: </strong>' . $username . '</li>
                                         <li><strong>Password:</strong> ' . $password . '</li>
                                     </ul>
                                     <p>Simply select the "Eduroam" network on your device, enter your email address and password, and you&apos;ll
@@ -121,7 +122,7 @@ try {
                         echo 'User data inserted successfully<br />';
                         echo '-----------------------------------<br />';
                     } else {
-                        echo 'User with email ' . $email . ' already exists in the radcheck table. Skipping insertion.<br>';
+                        echo 'User with email ' . $username . ' already exists in the radcheck table. Skipping insertion.<br>';
                     }
                 }
                 fclose($handle);
