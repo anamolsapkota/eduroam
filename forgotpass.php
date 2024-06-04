@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_reset_link'])) {
             $insertStmt->execute();
 
             // Send an email with a reset link
-            $resetLink = $site_baseurl . "forgotpass.php?token=$token"; // Replace with your actual URL
+            $resetLink = $site_baseurl . "eduroam/forgotpass.php?token=$token"; // Replace with your actual URL
             $subject = "Password Reset | eduroam";
             $message = "Click the following link to reset your password: $resetLink";
 
