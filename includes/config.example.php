@@ -3,8 +3,8 @@
 define(BASE_DIR, '/var/www/idp-tu.nren.net.np/eduroam/');
 
 require(BASE_DIR . 'db.php');
-require(BASE_DIR . 'includes/class.phpmailer.php');
-require(BASE_DIR . 'includes/class.smtp.php');
+// require(BASE_DIR . 'includes/class.phpmailer.php');
+// require(BASE_DIR . 'includes/class.smtp.php');
 
 $site_baseurl = "https://idp-tu.nren.net.np/";
 
