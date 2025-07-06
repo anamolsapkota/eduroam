@@ -16,7 +16,7 @@ function fetchLogContent($log_file_path) {
     if (file_exists($log_file_path) && is_readable($log_file_path)) {
         // Read the last 50 lines of the log file
         $log_lines = file($log_file_path);
-        $log_lines = array_slice($log_lines, -10);
+        $log_lines = array_slice($log_lines, -50);
         // Join the lines into a single string
         $log_content = implode('', $log_lines);
         // Return the log content

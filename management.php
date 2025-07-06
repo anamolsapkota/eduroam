@@ -102,7 +102,10 @@ require_once 'includes/config.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_name; ?> Management</title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
@@ -168,6 +171,44 @@ require_once 'includes/config.php';
                         } catch (e) {
                             // If it's not JSON, show the raw response
                             alert('An error occurred while approving the request. Server response: ' + xhr.responseText.substring(0, 200));
+                        }
+                    }
+                });
+            }
+        }
+
+        // function to reject request
+        function rejectRequest(id) {
+            if (confirm('Are you sure you want to reject this request?')) {
+                // Make an AJAX request to reject.php
+                $.ajax({
+                    type: 'POST',
+                    url: 'reject.php',
+                    data: {
+                        id: id // Pass the ID as a parameter
+                    },
+                    dataType: 'json', // Expect JSON response
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            // Request rejected successfully, you can update the UI or show a message
+                            alert(response.message);
+                            // Reload the page or update the request list
+                            location.reload();
+                        } else {
+                            // Handle error case, show an error message
+                            alert(response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX Error:', error); // Debugging: Log the error
+                        console.error('Response Text:', xhr.responseText); // Debugging: Log the response
+                        // Try to parse the response as JSON
+                        try {
+                            var errorResponse = JSON.parse(xhr.responseText);
+                            alert('Error: ' + errorResponse.message);
+                        } catch (e) {
+                            // If it's not JSON, show the raw response
+                            alert('An error occurred while rejecting the request. Server response: ' + xhr.responseText.substring(0, 200));
                         }
                     }
                 });
@@ -405,7 +446,7 @@ require_once 'includes/config.php';
                     echo "<td>" . htmlspecialchars($row["fullname"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["org_email"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["created_at"]) . "</td>";
-                    echo "<td><a href='javascript:void(0);' onclick=\"approveRequest('" . htmlspecialchars($row['id']) . "');\" class='btn btn-primary' data-hint='Approve User Account'>Approve</a></td>";
+                    echo "<td><a href='javascript:void(0);' onclick=\"approveRequest('" . htmlspecialchars($row['id']) . "');\" class='btn btn-primary' data-hint='Approve User Account'>Approve</a>&nbsp;<a href='javascript:void(0);' onclick=\"rejectRequest('" . htmlspecialchars($row['id']) . "');\" class='btn btn-danger' data-hint='Reject User Account'>Reject</a></td>";
                     echo "</tr>";
                 }
                 echo '</tbody>';
@@ -449,13 +490,6 @@ require_once 'includes/config.php';
             header('HTTP/1.0 401 Unauthorized');
             echo 'Access Denied';
         }
-        ?>
-        
-        <?php
-            echo "<div class='container mt-4 overflow-hide'>";
-            echo "<h2>Recent Logs</h2>";
-            include 'log.php';
-            echo "</div>";
         ?>
     </div>
 
