@@ -2,6 +2,7 @@
 
 // Include config
 require_once 'includes/config.php';
+require_once 'includes/email.php';
 
 // Function to generate a random password
 function generateRandomPassword($length = 8)
@@ -12,30 +13,6 @@ function generateRandomPassword($length = 8)
         $password .= $characters[rand(0, strlen($characters) - 1)];
     }
     return $password;
-}
-
-function sendEmail($to, $fullname, $subject, $message)
-{
-    global $mail_hostname, $mail_secure, $mail_port, $mail_username, $mail_password, $admin_email, $site_name;
-
-    $Mail = new PHPMailer();
-    $Mail->isSMTP();
-    $Mail->SMTPAuth   = true;
-    $Mail->Host       = $mail_hostname;
-    $Mail->SMTPSecure = $mail_secure;
-    $Mail->Port       = $mail_port;
-    $Mail->Username   = $mail_username;
-    $Mail->Password   = $mail_password;
-    $Mail->From       = $admin_email;
-    $Mail->FromName   = $site_name;
-    $Mail->addReplyTo($Mail->From, $Mail->FromName);
-    $Mail->isHTML(true);
-    $Mail->XMailer = $site_name;
-    $Mail->addAddress($to, $fullname);
-    $Mail->Subject = $subject;
-    $Mail->Body = $message;
-
-    $Mail->send();
 }
 
 // Define the allowed URL
@@ -93,8 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_REFERER']) && 
                 // Commit the transaction
                 $pdo->commit();
 
-                $email = $org_email;
-
                 // Send an email to the user
                 $subject = 'Eduroam Access Information';
                 $message = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -102,31 +77,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_REFERER']) && 
                             <h1>Eduroam Access Information</h1>
                         </div>
                         <div style="padding: 20px;">
-                            <p>Dear ' . $fullname . ',</p>
+                            <p>Dear ' . htmlspecialchars($fullname) . ',</p>
                             <p>We are pleased to provide you with access to Eduroam, a secure and convenient Wi-Fi network service
                                 available at educational institutions worldwide. Eduroam allows you to connect to the internet seamlessly
                                 while visiting participating institutions, including our own.</p>
                             <p>Here are the details to connect to Eduroam:</p>
                             <ul>
                                 <li><strong>Network Name (SSID):</strong> eduroam</li>
-                                <li><strong>Username: </strong>' . $email . '</li>
-                                <li><strong>Password:</strong> ' . $password . '</li>
+                                <li><strong>Username: </strong>' . htmlspecialchars($org_email) . '</li>
+                                <li><strong>Password:</strong> ' . htmlspecialchars($password) . '</li>
                             </ul>
                             <p>Simply select the "Eduroam" network on your device, enter your email address and password, and you&apos;ll
                                 have secure internet access.</p>
                             <p>If you ever forget your password and need to reset it, you can do so by clicking the following link:
-                                <a href="'. $site_baseurl .'eduroam/forgotpass.php">Reset Password</a></p>
+                                <a href="' . htmlspecialchars($site_baseurl) . 'eduroam/forgotpass.php">Reset Password</a></p>
                             <p>We hope you enjoy the benefits of secure and
                                 hassle-free internet access.</p>
                             <p>Sincerely,</p>
-                            <p>' . $site_name . '</p>
+                            <p>' . htmlspecialchars($site_name) . '</p>
                         </div>
                         </div>';
 
-                sendEmail($email,$fullname,$subject,$message);
-
-                // Approval was successful
-                $response = array('status' => 'success', 'message' => 'User approved successfully', 'password' => $password);
+                // Send the email
+                $result = sendEmail($org_email, $fullname, $subject, $message);
+                
+                if ($result['success']) {
+                    // Approval was successful
+                    $response = array('status' => 'success', 'message' => 'User approved successfully and email sent', 'password' => $password);
+                } else {
+                    // Email failed but user was still approved
+                    $response = array('status' => 'success', 'message' => 'User approved successfully but email failed: ' . $result['error'], 'password' => $password);
+                }
             } else {
                 // No record found for the provided ID
                 $response = array('status' => 'error', 'message' => 'No record found for the provided ID');
@@ -135,20 +116,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_REFERER']) && 
             // Something went wrong, rollback the transaction
             $pdo->rollback();
 
+            // Log the error
+            error_log("Database error in approve.php: " . $e->getMessage());
+
             // Approval failed
-            $response = array('status' => 'error', 'message' => 'Failed to approve user');
+            $response = array('status' => 'error', 'message' => 'Failed to approve user: Database error');
         }
 
         // Send a JSON response back to the client
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
+    } else {
+        // ID parameter not provided
+        $response = array('status' => 'error', 'message' => 'ID parameter is required');
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit;
     }
+} else {
+    // Handle invalid requests or direct access to this script
+    http_response_code(403);
+    header('Location: https://idp-pri.nren.net.np');
+    exit;
 }
-
-// Handle invalid requests or direct access to this script
-http_response_code(404);
-header('Location: https://idp-tu.nren.net.np');
-exit;
 
 ?>
