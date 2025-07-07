@@ -26,14 +26,14 @@ if ($_SERVER['PHP_AUTH_USER'] !== $authUser || $_SERVER['PHP_AUTH_PW'] !== $auth
 }
 
 // Include the config.php file
-require_once 'includes/config.php';
+require_once '../../includes/config.php';
 
 ?>
 
 <?php
 
 // Include database connection
-include 'db.php';
+include '../../db.php';
 
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -236,12 +236,11 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_name; ?> - NAS Management</title>
-    <link rel="stylesheet" href="assets/css/styles.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <?php include '../../template_parts/head.php'; ?>
 </head>
 <body>
-    <?php include 'template_parts/nav.php'; ?>
+    <?php include '../../template_parts/nav.php'; ?>
     <div class="container mt-4">
         <div class="row">
             <div class="col-12">
@@ -383,17 +382,7 @@ try {
         </div>
     </div>
 
-    <?php include 'template_parts/footer.php'; ?>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var attribution = document.createElement('div');
-            attribution.innerHTML = '<span class="text-white-50">Designed and Developed by <a href="https://sapkotaanamol.com.np" target="_blank" class="text-white-50" style="text-decoration:none;">Anamol Sapkota</a></span>';
-            var designedDeveloped = document.getElementById('designed-developed');
-            if (designedDeveloped) {
-                designedDeveloped.appendChild(attribution);
-            }
-        });
-    </script>
+    <?php include '../../template_parts/footer.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -411,7 +400,7 @@ try {
             document.getElementById('nasModalLabel').textContent = 'Edit NAS';
             
             // Fetch NAS data
-            fetch('nas.php', {
+            fetch('index.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -454,7 +443,7 @@ try {
                 formData.append('action', 'create');
             }
             
-            fetch('nas.php', {
+            fetch('index.php', {
                 method: 'POST',
                 body: formData
             })
@@ -475,7 +464,7 @@ try {
 
         function deleteNAS(id) {
             if (confirm('Are you sure you want to delete this NAS?')) {
-                fetch('nas.php', {
+                fetch('index.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

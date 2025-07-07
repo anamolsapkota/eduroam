@@ -102,12 +102,7 @@ require_once 'includes/config.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_name; ?> Management</title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"> -->
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <?php include 'template_parts/head.php'; ?>
     <script>
         function deleteUser(username) {
             if (confirm('Are you sure you want to delete this user?')) {
@@ -494,16 +489,6 @@ require_once 'includes/config.php';
     </div>
 
     <?php include 'template_parts/footer.php'; ?>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var attribution = document.createElement('div');
-            attribution.innerHTML = '<span class="text-white-50">Designed and Developed by <a href="https://sapkotaanamol.com.np" target="_blank" class="text-white-50" style="text-decoration:none;">Anamol Sapkota</a></span>';
-            var designedDeveloped = document.getElementById('designed-developed');
-            if (designedDeveloped) {
-                designedDeveloped.appendChild(attribution);
-            }
-        });
-    </script>
 
 </body>
 </html>

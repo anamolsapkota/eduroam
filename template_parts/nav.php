@@ -19,7 +19,7 @@
                     <a class="nav-link" href="/eduroam/management.php">Dashboard</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/eduroam/nas.php">NAS</a>
+                    <a class="nav-link" href="/eduroam/admin/nas">NAS</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/eduroam/admin/logs">Logs</a>

@@ -60,16 +60,6 @@ require_once '../../includes/config.php';
         </div>
 
     <?php include '../../template_parts/footer.php'; ?>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var attribution = document.createElement('div');
-            attribution.innerHTML = '<span class="text-white-50">Designed and Developed by <a href="https://sapkotaanamol.com.np" target="_blank" class="text-white-50" style="text-decoration:none;">Anamol Sapkota</a></span>';
-            var designedDeveloped = document.getElementById('designed-developed');
-            if (designedDeveloped) {
-                designedDeveloped.appendChild(attribution);
-            }
-        });
-    </script>
 
 </body>
 </html>

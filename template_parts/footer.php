@@ -1,9 +1,16 @@
-<div class="pt-5 pb-5 footer">
+<footer class="footer">
     <div class="container">
-        <div class="row mt-5">
-            <div class="col copyright" id="designed-developed">
-            <p class="text-white-50">© 2024 <?php echo $site_name; ?>. All Rights Reserved.&nbsp;</p>
+        <!-- Footer Bottom -->
+        <div class="row border-top border-secondary pt-4 pb-4">
+            <div class="col-md-6 mb-2">
+                <p class="text-light mb-0">
+                    © <?php echo date('Y'); ?> <?php echo $site_name; ?>. All Rights Reserved.
+                </p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <span class="text-white-50">Designed and Developed by <a href="https://sapkotaanamol.com.np" target="_blank" style="text-decoration:none; color:white;">Anamol Sapkota</a></span>
             </div>
         </div>
     </div>
-</div>
+</footer>
+
