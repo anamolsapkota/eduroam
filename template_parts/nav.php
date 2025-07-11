@@ -15,6 +15,10 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <!-- Navigation Menu Items (Left Side) -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <?php if(isset($_SESSION['user'])) : ?>
+                    <!-- <li class="nav-item">
+                        <a class="nav-link" href="/eduroam/admin/users">Users</a>
+                    </li> -->
                 <li class="nav-item">
                     <a class="nav-link" href="/eduroam/management.php">Dashboard</a>
                 </li>
@@ -24,6 +28,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/eduroam/admin/logs">Logs</a>
                 </li>
+                <?php endif; ?>
                 <!-- <li class="nav-item">
                     <a class="nav-link" href="/eduroam/reports.php">Reports</a>
                 </li> -->

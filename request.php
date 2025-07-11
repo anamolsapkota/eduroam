@@ -100,7 +100,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </form>
                 <!-- Link to reset password -->
-                <p class="mt-3"><a href="https://idp-tu.nren.net.np/eduroam/forgotpass.php">Forgot Password?</a></p>
+                <p class="mt-3"><a href="/eduroam/forgotpass.php">Forgot Password?</a></p>
             <?php } ?>
             
         </div>
