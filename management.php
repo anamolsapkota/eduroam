@@ -735,9 +735,9 @@ $usedDisk = executeCommand("df -h / | awk 'NR==2 {print $3}'");
                     echo '<div class="table-responsive">';
                     echo '<table class="table table-professional">';
                     echo '<thead><tr><th>#</th><th>Full Name</th><th>Username</th>';
-                    if (isset($_GET['password']) && $_GET['password'] == 'show') {
-                        echo '<th>Password</th>';
-                    }
+                    // if (isset($_GET['password']) && $_GET['password'] == 'show') {
+                    //     echo '<th>Password</th>';
+                    // }
                     echo '<th>Actions</th></tr></thead><tbody>';
                     
                     foreach ($results as $row) {
@@ -745,9 +745,9 @@ $usedDisk = executeCommand("df -h / | awk 'NR==2 {print $3}'");
                         echo "<td>" . $countersearch . "</td>";
                         echo "<td>" . htmlspecialchars($row['fullname']) . "</td>";
                         echo "<td>" . htmlspecialchars($row['username']) . "</td>";
-                        if (isset($_GET['password']) && $_GET['password'] == 'show') {
-                            echo "<td>" . htmlspecialchars($row['value']) . "</td>";
-                        }
+                        // if (isset($_GET['password']) && $_GET['password'] == 'show') {
+                        //     echo "<td>" . htmlspecialchars($row['value']) . "</td>";
+                        // }
                         echo "<td><button onclick=\"deleteUser('" . htmlspecialchars($row['username']) . "');\" class='btn btn-danger btn-icon'><i class='fas fa-trash'></i></button></td>";
                         echo "</tr>";
                         $countersearch++;
@@ -959,20 +959,20 @@ $usedDisk = executeCommand("df -h / | awk 'NR==2 {print $3}'");
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="um_password" class="form-label form-label-professional">
-                                Password
-                            </label>
-                            <div class="input-group-professional">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" class="form-control form-control-professional" id="um_password" name="password">
-                                </div>
-                                <i class="fas fa-eye toggle-password" onclick="um_togglePassword()"></i>
-                            </div>
-                            <small class="text-muted" id="um_passwordHelp">Leave blank to auto-generate a secure password</small>
-                            <div class="password-strength" id="um_passwordStrength" style="display: none;"></div>
-                        </div>
+<div class="mb-3">
+    <label for="um_password" class="form-label form-label-professional">
+        Password
+    </label>
+    <div class="input-group-professional">
+        <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+            <input type="password" class="form-control form-control-professional" id="um_password" name="password" disabled>
+        </div>
+        <i class="fas fa-eye toggle-password" style="visibility: hidden;"></i>
+    </div>
+    <small class="text-muted" id="um_passwordHelp">Leave blank to auto-generate a secure password</small>
+    <div class="password-strength" id="um_passwordStrength" style="display: none;"></div>
+</div>
 
                         <div class="mb-3" id="um_sendEmailContainer">
                             <div class="form-check form-switch">
@@ -1064,14 +1064,14 @@ $usedDisk = executeCommand("df -h / | awk 'NR==2 {print $3}'");
                             <p class="ms-4" id="um_viewEmail"></p>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <strong><i class="fas fa-lock"></i> Password:</strong>
-                            <p class="ms-4">
-                                <code id="um_viewPassword">********</code>
-                                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="um_toggleViewPassword()">
-                                    <i class="fas fa-eye" id="um_viewPasswordIcon"></i>
-                                </button>
-                            </p>
-                        </div>
+    <strong><i class="fas fa-lock"></i> Password:</strong>
+    <p class="ms-4">
+        <code id="um_viewPassword">********</code>
+        <button class="btn btn-sm btn-outline-secondary ms-2" style="visibility: hidden;">
+            <i class="fas fa-eye" id="um_viewPasswordIcon"></i> 
+        </button>
+    </p>
+</div>
                         <div class="col-md-6 mb-3">
                             <strong><i class="fas fa-calendar"></i> Updated Date:</strong>
                             <p class="ms-4" id="um_viewUpdatedate"></p>
@@ -1354,52 +1354,67 @@ $usedDisk = executeCommand("df -h / | awk 'NR==2 {print $3}'");
         }
 
         function um_saveUser() {
-            const form = document.getElementById('um_userForm');
-            const formData = new FormData(form);
+    const form = document.getElementById('um_userForm');
+    const formData = new FormData(form);
 
-            if (um_isEdit) {
-                formData.append('action', 'update');
-                formData.append('username', document.getElementById('um_originalUsername').value);
+    if (um_isEdit) {
+        formData.append('action', 'update');
+        formData.append('username', document.getElementById('um_originalUsername').value);
+    } else {
+        formData.append('action', 'create');
+        formData.append('send_email', document.getElementById('um_send_email').checked ? 'true' : 'false');
+    }
+
+    const saveBtn = document.querySelector('#um_userModal .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+    saveBtn.disabled = true;
+
+    fetch('user_management_api.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+
+            if (data.status === 'success') {
+                if (!um_isEdit && data.password) {
+                    um_showSuccess(data.message);
+                    const modal = new bootstrap.Modal(document.getElementById('um_userModal'));
+                    modal.hide(); // Close the modal
+
+                    // Reset the form fields after closing the modal
+                    form.reset();
+                } else {
+                    um_showSuccess(data.message);
+                    // Close the modal after a successful save
+                    const modal = new bootstrap.Modal(document.getElementById('um_userModal'));
+                    modal.hide(); // Close the modal
+
+                    // Reset the form fields after closing the modal
+                    form.reset();
+
+                    // Optionally reset any dynamic states like password display or modal title
+                    document.getElementById('um_userModalLabel').innerHTML = '<i class="fas fa-user-plus"></i> Add New User';
+                    document.getElementById('um_passwordDisplay').style.display = 'none';
+                    document.getElementById('um_usernameHelp').style.display = 'block';
+                    document.getElementById('um_sendEmailContainer').style.display = 'block';
+                }
+                um_loadUsers();
             } else {
-                formData.append('action', 'create');
-                formData.append('send_email', document.getElementById('um_send_email').checked ? 'true' : 'false');
+                um_showError(data.message);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            um_showError('An error occurred while saving user');
+        });
+}
 
-            const saveBtn = document.querySelector('#um_userModal .btn-primary');
-            const originalText = saveBtn.innerHTML;
-            saveBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
-            saveBtn.disabled = true;
-
-            fetch('user_management_api.php', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    saveBtn.innerHTML = originalText;
-                    saveBtn.disabled = false;
-
-                    if (data.status === 'success') {
-                        if (!um_isEdit && data.password) {
-                            document.getElementById('um_generatedPassword').textContent = data.password;
-                            document.getElementById('um_passwordDisplay').style.display = 'block';
-                            um_showSuccess(data.message + ' (Password: ' + data.password + ')');
-                        } else {
-                            um_showSuccess(data.message);
-                            bootstrap.Modal.getInstance(document.getElementById('um_userModal')).hide();
-                        }
-                        um_loadUsers();
-                    } else {
-                        um_showError(data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    saveBtn.innerHTML = originalText;
-                    saveBtn.disabled = false;
-                    um_showError('An error occurred while saving user');
-                });
-        }
 
         function um_deleteUser(username) {
             um_deleteTargetUsername = username;
