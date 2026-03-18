@@ -37,7 +37,7 @@ Once the installation and configuration are complete, you can use the following 
   Visit `https://yoursite.edu.np/edutoam/request.php` to access the Eduroam request page.
 
 - **Eduroam Management URL:**
-  Visit `https://yoursite.edu.np/eduroam/management.php` to access the Eduroam Management page.
+  Visit `https://yoursite.edu.np/eduroam/admin/` to access the Eduroam Management page.
 
 ## Contributing
 

@@ -5,7 +5,7 @@ session_start();
 // Check if 'basic_auth' session variable is set
 if(!isset($_SESSION['basic_auth']) || empty($_SESSION['basic_auth'])) {
     // Redirect to the login page
-    header('Location: /eduroam/login.php');
+    header('Location: /eduroam/admin/login.php');
     exit; // Terminate script execution after redirection
 }
 
@@ -35,29 +35,23 @@ require_once '../../includes/config.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_name; ?> Management</title>
-    <link rel="stylesheet" href="../../assets/css/styles.css">
-    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"> -->
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="/eduroam/assets/css/styles.css">
+    <?php include '../../template_parts/head.php'; ?>
 </head>
-<body>
+<body class="app-shell">
     <?php include '../../template_parts/nav.php'; ?>
-    <div id="content" class="container mt-4 mb-4">
+    <main id="content" class="page-shell">
         <?php 
         // get current date and time
         $dateTime = date("F j, Y, g:i a");
-        echo "Current Server Time: ".$dateTime;
+        echo "<div class='hero-banner'><div><span class='eyebrow'>Admin Logs</span><h1>Recent Logs</h1><p class='meta mb-0'>Current server time: " . htmlspecialchars($dateTime) . "</p></div></div>";
         ?>
 <?php
-            echo "<div class='container mt-4 overflow-hide'>";
-            echo "<h2>Recent Logs</h2>";
+            echo "<section class='table-card overflow-hide'>";
             include '../../log.php';
-            echo "</div>";
+            echo "</section>";
         ?>
-        </div>
+        </main>
 
     <?php include '../../template_parts/footer.php'; ?>
 

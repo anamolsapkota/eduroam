@@ -675,6 +675,56 @@ a {
     margin-bottom: 1.5rem;
 }
 
+.manual-create-panel {
+    margin-bottom: 1.5rem;
+}
+
+.manual-create-form {
+    margin-top: 1rem;
+}
+
+.manual-create-grid,
+.manual-result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.manual-result-card {
+    margin-top: 1.25rem;
+    padding: 1.2rem;
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, #f5faff 0%, #edf4fb 100%);
+    border: 1px solid rgba(13, 59, 111, 0.08);
+}
+
+.manual-result-card h3 {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.manual-result-grid div {
+    padding: 0.95rem 1rem;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid rgba(18, 48, 71, 0.08);
+}
+
+.manual-result-grid span {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.manual-result-grid strong {
+    color: var(--ink);
+    word-break: break-word;
+}
+
 .upload-form,
 .search-form {
     margin: 0;
@@ -984,6 +1034,11 @@ a {
 
     .chart-card--wide {
         grid-column: span 1;
+    }
+
+    .manual-create-grid,
+    .manual-result-grid {
+        grid-template-columns: 1fr;
     }
 
     .faq-grid,

@@ -5,7 +5,7 @@ session_start();
 // Check if 'basic_auth' session variable is set
 if(!isset($_SESSION['basic_auth']) || empty($_SESSION['basic_auth'])) {
     // Redirect to the login page
-    header('Location: /eduroam/login.php');
+    header('Location: /eduroam/admin/login.php');
     exit; // Terminate script execution after redirection
 }
 

@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg app-navbar" id="navbar">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="<?php echo isset($_SESSION['user']) ? '/eduroam/management.php' : '/eduroam/'; ?>">
+        <a class="navbar-brand fw-bold" href="<?php echo isset($_SESSION['user']) ? '/eduroam/admin/' : '/eduroam/'; ?>">
             <span class="brand-mark brand-mark--dual">
                 <img src="/eduroam/assets/images/nren-logo.jpg" alt="NREN logo" class="brand-logo">
                 <img src="/eduroam/assets/images/eduroam-logo.png" alt="eduroam logo" class="brand-logo">
@@ -20,7 +20,7 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <?php if(isset($_SESSION['user'])) : ?>
                 <li class="nav-item">
-                    <a class="nav-link" href="/eduroam/management.php">Dashboard</a>
+                    <a class="nav-link" href="/eduroam/admin/">Dashboard</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/eduroam/admin/nas">NAS</a>
@@ -64,12 +64,12 @@
                             <li><span class="dropdown-item-text small text-muted"><?php echo $fullname; ?></span></li>
                             <li><span class="dropdown-item-text small text-muted"><?php echo $email; ?></span></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/eduroam/settings.php">
+                            <li><a class="dropdown-item" href="/eduroam/admin/settings.php">
                                 <i class="fas fa-cog me-2"></i>Settings
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <form action="logout.php" method="post" class="d-inline">
+                                <form action="/eduroam/admin/logout.php" method="post" class="d-inline">
                                     <button type="submit" class="dropdown-item text-danger">
                                         <i class="fas fa-sign-out-alt me-2"></i>Logout
                                     </button>

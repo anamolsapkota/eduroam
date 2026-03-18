@@ -21,95 +21,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
         $output = "Please provide your full name.";
     } else {
         try {
-            ensureGuestAccountInfrastructure($pdo);
-            purgeExpiredGuestAccounts($pdo);
+            $guestAccount = createGuestAccount($pdo, $fullname, $email, 'auto_request');
 
-            $checkGuestStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_accounts WHERE delivery_email = :email AND expires_at > NOW()");
-            $checkGuestStmt->bindParam(':email', $email, PDO::PARAM_STR);
-            $checkGuestStmt->execute();
-            $activeGuestCount = (int) $checkGuestStmt->fetchColumn();
+            $subject = 'Eduroam Access Information';
+            $message = buildGuestCredentialEmail(
+                $guestAccount['fullname'],
+                $guestAccount['username'],
+                $guestAccount['password'],
+                $guestAccount['expires_at_display'],
+                $site_baseurl,
+                $site_name
+            );
 
-            $checkUserStmt = $pdo->prepare("SELECT COUNT(*) FROM userinfo WHERE email = :email");
-            $checkUserStmt->bindParam(':email', $email, PDO::PARAM_STR);
-            $checkUserStmt->execute();
-            $existingUserCount = (int) $checkUserStmt->fetchColumn();
+            $emailResult = sendEmail($email, $fullname, $subject, $message);
 
-            if ($activeGuestCount > 0 || $existingUserCount > 0) {
-                $output = "This email address already has an active account.";
+            if (!$emailResult['success']) {
+                $pdo->prepare("DELETE FROM radcheck WHERE username = :username")->execute([':username' => $guestAccount['username']]);
+                $pdo->prepare("DELETE FROM userinfo WHERE username = :username")->execute([':username' => $guestAccount['username']]);
+                $pdo->prepare("DELETE FROM guest_accounts WHERE username = :username")->execute([':username' => $guestAccount['username']]);
+                $output = "We could not send your credentials right now: " . $emailResult['error'];
             } else {
-                $username = generateGuestUsername($pdo, $fullname);
-                $password = generateRandomPassword(8);
-                $createdAt = date("Y-m-d H:i:s");
-                $expiresAtDb = date("Y-m-d H:i:s", strtotime('+24 hours'));
-                $expiresAtTimestamp = strtotime($expiresAtDb);
-                $expiresAtRadius = gmdate("D j M Y H:i:s", $expiresAtTimestamp) . " UTC";
-                $expiresAtDisplay = date("D j M Y H:i:s T", $expiresAtTimestamp);
-
-                $pdo->beginTransaction();
-
-                $insertRadcheckStmt = $pdo->prepare("INSERT INTO radcheck (username, attribute, op, value) VALUES (:username, 'Cleartext-Password', ':=', :password)");
-                $insertRadcheckStmt->bindParam(':username', $username, PDO::PARAM_STR);
-                $insertRadcheckStmt->bindParam(':password', $password, PDO::PARAM_STR);
-                $insertRadcheckStmt->execute();
-
-                $insertExpiryStmt = $pdo->prepare("INSERT INTO radcheck (username, attribute, op, value) VALUES (:username, 'Expiration', ':=', :expiration)");
-                $insertExpiryStmt->bindParam(':username', $username, PDO::PARAM_STR);
-                $insertExpiryStmt->bindParam(':expiration', $expiresAtRadius, PDO::PARAM_STR);
-                $insertExpiryStmt->execute();
-
-                $insertUserinfoStmt = $pdo->prepare("INSERT INTO userinfo (username, fullname, email, updateby, updatedate) VALUES (:username, :fullname, :email, 'auto_request', :updatedate)");
-                $insertUserinfoStmt->bindParam(':username', $username, PDO::PARAM_STR);
-                $insertUserinfoStmt->bindParam(':fullname', $fullname, PDO::PARAM_STR);
-                $insertUserinfoStmt->bindParam(':email', $email, PDO::PARAM_STR);
-                $insertUserinfoStmt->bindParam(':updatedate', $createdAt, PDO::PARAM_STR);
-                $insertUserinfoStmt->execute();
-
-                $insertGuestStmt = $pdo->prepare("INSERT INTO guest_accounts (username, delivery_email, fullname, created_at, expires_at) VALUES (:username, :email, :fullname, :created_at, :expires_at)");
-                $insertGuestStmt->bindParam(':username', $username, PDO::PARAM_STR);
-                $insertGuestStmt->bindParam(':email', $email, PDO::PARAM_STR);
-                $insertGuestStmt->bindParam(':fullname', $fullname, PDO::PARAM_STR);
-                $insertGuestStmt->bindParam(':created_at', $createdAt, PDO::PARAM_STR);
-                $insertGuestStmt->bindParam(':expires_at', $expiresAtDb, PDO::PARAM_STR);
-                $insertGuestStmt->execute();
-
-                $subject = 'Eduroam Access Information';
-                $message = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background-color: #007BFF; color: #fff; padding: 20px; text-align: center;">
-                            <h1>Eduroam Access Information</h1>
-                        </div>
-                        <div style="padding: 20px;">
-                            <p>Dear ' . htmlspecialchars($fullname) . ',</p>
-                            <p>Your 24-hour guest eduroam account has been created automatically.</p>
-                            <p>Here are the details to connect to Eduroam:</p>
-                            <ul>
-                                <li><strong>Network Name (SSID):</strong> eduroam</li>
-                                <li><strong>Username:</strong> ' . htmlspecialchars($username) . '</li>
-                                <li><strong>Password:</strong> ' . htmlspecialchars($password) . '</li>
-                                <li><strong>Valid Until:</strong> ' . htmlspecialchars($expiresAtDisplay) . '</li>
-                            </ul>
-                            <p>Select the "Eduroam" network on your device and sign in with the guest username and password above.</p>
-                            <p>If you need to reset the password before the account expires, use this link:
-                                <a href="' . htmlspecialchars($site_baseurl) . 'eduroam/forgotpass.php">Reset Password</a></p>
-                            <p>Sincerely,</p>
-                            <p>' . htmlspecialchars($site_name) . '</p>
-                        </div>
-                        </div>';
-
-                $emailResult = sendEmail($email, $fullname, $subject, $message);
-
-                if (!$emailResult['success']) {
-                    $pdo->rollBack();
-                    $output = "We could not send your credentials right now: " . $emailResult['error'];
-                } else {
-                    $pdo->commit();
-                    $output = "Your guest eduroam account has been created and the credentials have been emailed to you.";
-                }
+                $output = "Your guest eduroam account has been created and the credentials have been emailed to you.";
             }
+        } catch (InvalidArgumentException | RuntimeException $e) {
+            $output = $e->getMessage();
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-
             error_log("Guest account auto-provisioning failed: " . $e->getMessage());
             $output = "Error, please try again later.";
         }

@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Include config
-require_once 'includes/config.php';
+require_once __DIR__ . '/config.php';
 
 /**
  * Send email with improved security and error handling
