@@ -9,6 +9,12 @@ if (isset($_SESSION['basic_auth'])) {
 
 require_once('includes/config.php');
 
+$seo_title = 'Admin Login | eduroam Visitor Access';
+$seo_description = 'Administrator sign-in for the eduroam Visitor Access management dashboard.';
+$seo_canonical = 'https://eva.nren.net.np/eduroam/login.php';
+$seo_robots = 'noindex,follow';
+$seo_type = 'website';
+
 // If request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -49,17 +55,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $site_name; ?> Management</title>
+    <title><?php echo htmlspecialchars($seo_title); ?></title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <?php include 'template_parts/head.php'; ?>
 </head>
-<body id="logindiv">
-    <div style="position: relative; width: 100vw; height: 100vh; margin: 0; padding: 0; overflow: hidden;">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://source.unsplash.com/1600x900/?education'); background-size: cover; background-position: center;"></div>
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6);"></div>
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"  id="login">
-            <h5 class="mt-4 mb-4 text-center"><?php echo $site_name; ?> Management</h5>
+<body id="logindiv" class="app-shell public-shell">
+    <?php include_once('template_parts/nav.php'); ?>
+    <main id="content" class="page-shell auth-shell">
+        <div id="login" class="auth-card">
+            <div class="auth-logo-wrap">
+                <div class="auth-logo-pair">
+                    <img src="/eduroam/assets/images/nren-logo.jpg" alt="NREN logo" class="auth-logo">
+                    <img src="/eduroam/assets/images/eduroam-logo.png" alt="eduroam logo" class="auth-logo auth-logo--wide">
+                </div>
+            </div>
+            <span class="auth-kicker">Administrator Access</span>
+            <h1 class="auth-title"><?php echo $site_name; ?> Management</h1>
+            <p class="auth-subtitle">Sign in to manage guest credentials, review recent accounts, and update the delivery settings.</p>
             <!-- If alert in session, show Bootstrap warning alert -->
             <?php if (isset($_SESSION['alert']) && $_SESSION['alert']) : ?>
                 <div class="alert alert-warning" role="alert">
@@ -80,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn btn-primary">Login</button>
             </form>
         </div>
-    </div>
+    </main>
+    <?php include_once('template_parts/footer.php'); ?>
 </body>
 </html>

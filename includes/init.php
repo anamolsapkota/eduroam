@@ -34,6 +34,22 @@ if (!$password_reset_table_exists) {
     $pdo->exec($password_reset);
 }
 
+$guest_accounts_exists_query = "SHOW TABLES LIKE 'guest_accounts'";
+$result_guest_accounts = $pdo->query($guest_accounts_exists_query);
+$guest_accounts_table_exists = $result_guest_accounts->rowCount() > 0;
+
+if (!$guest_accounts_table_exists) {
+    $guest_accounts = "CREATE TABLE guest_accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(64) NOT NULL UNIQUE,
+        delivery_email VARCHAR(255) NOT NULL,
+        fullname VARCHAR(255) NOT NULL,
+        created_at DATETIME NOT NULL,
+        expires_at DATETIME NOT NULL
+    )";
+    $pdo->exec($guest_accounts);
+}
+
 http_response_code(404);
 echo 'Already initialized';
 exit;

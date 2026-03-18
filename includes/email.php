@@ -19,7 +19,7 @@ require_once 'includes/config.php';
  */
 function sendEmail($to, $fullname, $subject, $message) {
     global $mail_hostname, $mail_secure, $mail_port, $mail_username, $mail_password, 
-           $admin_email, $site_name, $allowed_domains;
+           $admin_email, $site_name;
     
     // Configuration with defaults
     $config = [
@@ -30,7 +30,6 @@ function sendEmail($to, $fullname, $subject, $message) {
         'mail_password' => $mail_password ?? '',
         'admin_email' => $admin_email ?? '',
         'site_name' => $site_name ?? 'Website',
-        'allowed_domains' => $allowed_domains ?? [],
         'max_emails_per_hour' => 10
     ];
     
@@ -43,11 +42,6 @@ function sendEmail($to, $fullname, $subject, $message) {
     $validation_result = validateEmailInputs($to, $fullname, $subject, $message);
     if (!$validation_result['valid']) {
         return ['success' => false, 'error' => $validation_result['error']];
-    }
-    
-    // Validate email domain
-    if (!validateEmailDomain($to, $config['allowed_domains'])) {
-        return ['success' => false, 'error' => 'Email domain not allowed'];
     }
     
     try {
@@ -91,18 +85,6 @@ function validateEmailInputs($to, $fullname, $subject, $message) {
     }
     
     return ['valid' => true];
-}
-
-/**
- * Validate email domain against allowed list
- */
-function validateEmailDomain($email, $allowed_domains) {
-    if (empty($allowed_domains)) {
-        return true; // No domain restrictions
-    }
-    
-    $domain = substr(strrchr($email, "@"), 1);
-    return in_array($domain, $allowed_domains);
 }
 
 /**

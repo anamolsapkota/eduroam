@@ -2,6 +2,16 @@
 
 // Include config
 require_once 'includes/config.php';
+require_once 'includes/guest_accounts.php';
+
+$seo_title = $site_name . ' | Reset Guest Password';
+$seo_description = 'Reset the password for an active eduroam Visitor Access guest account using the delivery email address.';
+$seo_canonical = 'https://eva.nren.net.np/eduroam/forgotpass.php';
+$seo_robots = 'noindex,follow';
+$seo_type = 'website';
+
+ensureGuestAccountInfrastructure($pdo);
+purgeExpiredGuestAccounts($pdo);
 
 $errors = array(); // Initialize an empty array to store errors
 $success_alerts = array();
@@ -42,12 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_reset_link'])) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Invalid email address.";
     } else {
-        // Check if the email exists in your user database (e.g., radcheck table)
-        $query = "SELECT * FROM radcheck WHERE username = :email";
+        // Check if the email exists in user metadata for a guest account.
+        $query = "SELECT username, fullname FROM userinfo WHERE email = :email LIMIT 1";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(':email', $email);
         $stmt->execute();
-        $userExists = $stmt->rowCount() > 0;
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $userExists = $user !== false;
 
         if ($userExists) {
             // Generate a unique token for the user (you can use a random string generator)
@@ -76,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_reset_link'])) {
 
             try {
                 // Send an email to the user
-                sendEmail($email, "User", $subject, $message);
+                sendEmail($email, $user['fullname'], $subject, $message);
                 $success_alerts[] = "Password reset instructions sent to your email address.";
             } catch (Exception $e) {
                 $errors[] = $e->getMessage();
@@ -105,22 +116,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
         if ($stmt->rowCount() > 0) {
             // Reset the user's password
             $email = $stmt->fetch(PDO::FETCH_ASSOC)['email'];
-            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            $lookupQuery = "SELECT username FROM userinfo WHERE email = :email LIMIT 1";
+            $lookupStmt = $pdo->prepare($lookupQuery);
+            $lookupStmt->bindParam(':email', $email);
+            $lookupStmt->execute();
+            $username = $lookupStmt->fetchColumn();
 
-            // Update the user's password in your user database (e.g., radcheck table)
-            $updateQuery = "UPDATE radcheck SET value = :password WHERE username = :email";
-            $updateStmt = $pdo->prepare($updateQuery);
-            $updateStmt->bindParam(':password', $password);
-            $updateStmt->bindParam(':email', $email);
-            $updateStmt->execute();
+            if ($username) {
+                $updateQuery = "UPDATE radcheck SET value = :password WHERE username = :username AND attribute = 'Cleartext-Password'";
+                $updateStmt = $pdo->prepare($updateQuery);
+                $updateStmt->bindParam(':password', $password);
+                $updateStmt->bindParam(':username', $username);
+                $updateStmt->execute();
 
-            // Delete the used token from the password_reset table
-            $deleteQuery = "DELETE FROM password_reset WHERE token = :token";
-            $deleteStmt = $pdo->prepare($deleteQuery);
-            $deleteStmt->bindParam(':token', $token);
-            $deleteStmt->execute();
+                // Delete the used token from the password_reset table
+                $deleteQuery = "DELETE FROM password_reset WHERE token = :token";
+                $deleteStmt = $pdo->prepare($deleteQuery);
+                $deleteStmt->bindParam(':token', $token);
+                $deleteStmt->execute();
 
-            $success_alerts[] = "Password reset successfully.";
+                $success_alerts[] = "Password reset successfully.";
+            } else {
+                $errors[] = "No guest account is associated with this email address.";
+            }
         } else {
             $errors[] = "Invalid or expired token.";
         }
@@ -136,20 +154,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Forgot Password | <?php echo $site_name ?></title>
+    <title><?php echo htmlspecialchars($seo_title); ?></title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <?php include 'template_parts/head.php'; ?>
 </head>
 
-<body>
+<body class="app-shell public-shell">
 <?php include_once('template_parts/nav.php'); ?>
-<div id="content">
-    <div class="row">
-        <div class="col-md-4 offset-md-4 form login-form">
-            <div class="mr-auto ml-auto text-center mt-4 mb-4"></div>
-            <h2 class="text-center"><?php echo $site_name ?></h2>
-            <p class="text-center">Reset your password.</p>
+<main id="content" class="page-shell auth-shell">
+        <section class="auth-card">
+            <span class="auth-kicker">Password Recovery</span>
+            <h1 class="auth-title"><?php echo $site_name ?></h1>
+            <p class="auth-subtitle">Use the same email address you used to receive the guest account and we&apos;ll send a reset link.</p>
 
             <!-- Display Errors (if any) -->
             <?php if (count($errors) > 0) { ?>
@@ -170,10 +186,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
             <?php } ?>
 
             <?php if (!isset($_POST['reset_password']) && !isset($_GET['token'])) { ?>
-                <!-- HTML Form for Sending Reset Link -->
                 <form class="mt-4 mb-4" action="" method="post">
                     <div class="form-group mb-2">
-                        <label for="email">Email Address:</label>
+                        <label for="email">Email Address Used For Account Delivery:</label>
                         <input type="email" name="email" class="form-control" required>
                     </div>
                     <button type="submit" name="send_reset_link" class="btn btn-primary">Submit</button>
@@ -181,7 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
             <?php } ?>
 
             <?php if (isset($_GET['token'])) { ?>
-                <!-- HTML Form for Password Reset -->
                 <form class="mt-4 mb-4" action="" method="post">
                     <div class="form-group mt-2">
                         <label for="password">New Password:</label>
@@ -196,10 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
                 </form>
             <?php } ?>
 
-        </div>
-    </div>
-    <div style="height: 100px;"></div>
-</div>
+        </section>
+</main>
 
 <?php include_once('template_parts/footer.php'); ?>
 </body>

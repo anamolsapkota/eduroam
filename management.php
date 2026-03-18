@@ -65,9 +65,46 @@ require_once 'includes/config.php';
         return trim($output); // Remove leading/trailing white spaces
     }
 
+    function buildDailySeries($rows, $days = 14)
+    {
+        $labels = [];
+        $values = [];
+        $rowMap = [];
+
+        foreach ($rows as $row) {
+            $rowMap[$row['period']] = (int) $row['count'];
+        }
+
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $day = date('Y-m-d', strtotime("-$i days"));
+            $labels[] = date('M j', strtotime($day));
+            $values[] = $rowMap[$day] ?? 0;
+        }
+
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    function buildHourlySeries($rows)
+    {
+        $labels = [];
+        $values = [];
+        $rowMap = [];
+
+        foreach ($rows as $row) {
+            $rowMap[(int) $row['period']] = (int) $row['count'];
+        }
+
+        for ($hour = 0; $hour < 24; $hour++) {
+            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $values[] = $rowMap[$hour] ?? 0;
+        }
+
+        return ['labels' => $labels, 'values' => $values];
+    }
+
     include 'db.php';
     // Total Users (count from radcheck table)
-    $queryTotalUsers = "SELECT COUNT(*) AS totalUsers FROM userinfo u INNER JOIN radcheck r ON u.username = r.username;";
+    $queryTotalUsers = "SELECT COUNT(*) AS totalUsers FROM userinfo u INNER JOIN radcheck r ON u.username = r.username AND r.attribute = 'Cleartext-Password';";
     $stmtTotalUsers = $pdo->prepare($queryTotalUsers);
     $stmtTotalUsers->execute();
     $rowTotalUsers = $stmtTotalUsers->fetch(PDO::FETCH_ASSOC);
@@ -89,10 +126,81 @@ require_once 'includes/config.php';
     $totalMemory = executeCommand("free -h | grep Mem | awk '{print $2}'");
     $usedMemory = executeCommand("free -h | grep Mem | awk '{print $3}'");
     $freeMemory = executeCommand("free -h | grep Mem | awk '{print $4}'");
+    $totalMemoryBytes = (int) executeCommand("free -b | grep Mem | awk '{print $2}'");
+    $usedMemoryBytes = (int) executeCommand("free -b | grep Mem | awk '{print $3}'");
+    $freeMemoryBytes = (int) executeCommand("free -b | grep Mem | awk '{print $4}'");
 
     $totalDisk = executeCommand("df -h / | awk 'NR==2 {print $2}'");
     $freeDisk = executeCommand("df -h / | awk 'NR==2 {print $4}'");
     $usedDisk = executeCommand("df -h / | awk 'NR==2 {print $3}'");
+    $totalDiskBytes = (int) executeCommand("df -B1 / | awk 'NR==2 {print $2}'");
+    $freeDiskBytes = (int) executeCommand("df -B1 / | awk 'NR==2 {print $4}'");
+    $usedDiskBytes = (int) executeCommand("df -B1 / | awk 'NR==2 {print $3}'");
+
+    $guestAccountsExists = $pdo->query("SHOW TABLES LIKE 'guest_accounts'")->rowCount() > 0;
+    $guestTotal = 0;
+    $guestActive = 0;
+    $guestExpired = 0;
+    $guestPendingExpiry = 0;
+    $guestDailyChart = ['labels' => [], 'values' => []];
+    $guestStatusChart = ['labels' => ['Active', 'Expired'], 'values' => [0, 0]];
+
+    if ($guestAccountsExists) {
+        $guestTotal = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts")->fetchColumn();
+        $guestActive = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts WHERE expires_at > NOW()")->fetchColumn();
+        $guestExpired = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts WHERE expires_at <= NOW()")->fetchColumn();
+        $guestPendingExpiry = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts WHERE expires_at BETWEEN NOW() AND NOW() + INTERVAL 6 HOUR")->fetchColumn();
+        $guestStatusChart['values'] = [$guestActive, $guestExpired];
+
+        $guestDailyStmt = $pdo->query("SELECT DATE(created_at) AS period, COUNT(*) AS count FROM guest_accounts WHERE created_at >= NOW() - INTERVAL 14 DAY GROUP BY DATE(created_at) ORDER BY DATE(created_at)");
+        $guestDailyChart = buildDailySeries($guestDailyStmt->fetchAll(PDO::FETCH_ASSOC), 14);
+    }
+
+    $authDailyStmt = $pdo->query("SELECT DATE(authdate) AS period, COUNT(*) AS count FROM radpostauth WHERE authdate >= NOW() - INTERVAL 14 DAY GROUP BY DATE(authdate) ORDER BY DATE(authdate)");
+    $authDailyChart = buildDailySeries($authDailyStmt->fetchAll(PDO::FETCH_ASSOC), 14);
+
+    $sessionHourlyStmt = $pdo->query("SELECT HOUR(acctstarttime) AS period, COUNT(*) AS count FROM radacct WHERE acctstarttime >= NOW() - INTERVAL 14 DAY GROUP BY HOUR(acctstarttime) ORDER BY HOUR(acctstarttime)");
+    $sessionHourlyChart = buildHourlySeries($sessionHourlyStmt->fetchAll(PDO::FETCH_ASSOC));
+
+    $authReplyChart = ['labels' => [], 'values' => []];
+    $authReplyStmt = $pdo->query("SELECT COALESCE(reply, 'unknown') AS reply, COUNT(*) AS count FROM radpostauth WHERE authdate >= NOW() - INTERVAL 14 DAY GROUP BY reply ORDER BY count DESC");
+    foreach ($authReplyStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $authReplyChart['labels'][] = ucfirst(strtolower($row['reply']));
+        $authReplyChart['values'][] = (int) $row['count'];
+    }
+
+    if (empty($authReplyChart['labels'])) {
+        $authReplyChart = ['labels' => ['No data'], 'values' => [0]];
+    }
+
+    $topNasChart = ['labels' => [], 'values' => []];
+    $topNasStmt = $pdo->query("SELECT COALESCE(nasipaddress, 'unknown') AS nasipaddress, COUNT(*) AS count FROM radacct GROUP BY nasipaddress ORDER BY count DESC LIMIT 5");
+    foreach ($topNasStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $topNasChart['labels'][] = $row['nasipaddress'];
+        $topNasChart['values'][] = (int) $row['count'];
+    }
+
+    if (empty($topNasChart['labels'])) {
+        $topNasChart = ['labels' => ['No session data'], 'values' => [0]];
+    }
+
+    $chartPayload = [
+        'guestDaily' => $guestDailyChart,
+        'guestStatus' => $guestStatusChart,
+        'authDaily' => $authDailyChart,
+        'sessionHourly' => $sessionHourlyChart,
+        'authReply' => $authReplyChart,
+        'topNas' => $topNasChart,
+        'systemCapacity' => [
+            'labels' => ['Memory Used', 'Memory Free', 'Disk Used', 'Disk Free'],
+            'values' => [
+                round($usedMemoryBytes / 1073741824, 2),
+                round($freeMemoryBytes / 1073741824, 2),
+                round($usedDiskBytes / 1073741824, 2),
+                round($freeDiskBytes / 1073741824, 2),
+            ],
+        ],
+    ];
 ?>
 
 <!DOCTYPE html>
@@ -103,6 +211,7 @@ require_once 'includes/config.php';
     <title><?php echo $site_name; ?> Management</title>
     <link rel="stylesheet" href="assets/css/styles.css">
     <?php include 'template_parts/head.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script>
         function deleteUser(username) {
             if (confirm('Are you sure you want to delete this user?')) {
@@ -132,194 +241,163 @@ require_once 'includes/config.php';
             }
         }
 
-        // function to approve request
-        function approveRequest(id) {
-            if (confirm('Are you sure you want to approve this request?')) {
-                // Make an AJAX request to approve.php
-                $.ajax({
-                    type: 'POST',
-                    url: 'approve.php',
-                    data: {
-                        id: id // Pass the ID as a parameter
-                    },
-                    dataType: 'json', // Expect JSON response
-                    success: function (response) {
-                        console.log(response); // Debugging: Log the response
-                        if (response.status === 'success') {
-                            // Request approved successfully, you can update the UI or show a message
-                            alert(response.message);
-                            // Reload the page or update the request list
-                            location.reload();
-                        } else {
-                            // Handle error case, show an error message
-                            alert(response.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('AJAX Error:', error); // Debugging: Log the error
-                        console.error('Response Text:', xhr.responseText); // Debugging: Log the response
-                        
-                        // Try to parse the response as JSON
-                        try {
-                            var errorResponse = JSON.parse(xhr.responseText);
-                            alert('Error: ' + errorResponse.message);
-                        } catch (e) {
-                            // If it's not JSON, show the raw response
-                            alert('An error occurred while approving the request. Server response: ' + xhr.responseText.substring(0, 200));
-                        }
-                    }
-                });
-            }
-        }
-
-        // function to reject request
-        function rejectRequest(id) {
-            if (confirm('Are you sure you want to reject this request?')) {
-                // Make an AJAX request to reject.php
-                $.ajax({
-                    type: 'POST',
-                    url: 'reject.php',
-                    data: {
-                        id: id // Pass the ID as a parameter
-                    },
-                    dataType: 'json', // Expect JSON response
-                    success: function (response) {
-                        if (response.status === 'success') {
-                            // Request rejected successfully, you can update the UI or show a message
-                            alert(response.message);
-                            // Reload the page or update the request list
-                            location.reload();
-                        } else {
-                            // Handle error case, show an error message
-                            alert(response.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('AJAX Error:', error); // Debugging: Log the error
-                        console.error('Response Text:', xhr.responseText); // Debugging: Log the response
-                        // Try to parse the response as JSON
-                        try {
-                            var errorResponse = JSON.parse(xhr.responseText);
-                            alert('Error: ' + errorResponse.message);
-                        } catch (e) {
-                            // If it's not JSON, show the raw response
-                            alert('An error occurred while rejecting the request. Server response: ' + xhr.responseText.substring(0, 200));
-                        }
-                    }
-                });
-            }
-        }
     </script>
 </head>
-<body>
+<body class="app-shell">
     <?php include 'template_parts/nav.php'; ?>
-    <div id="content" class="container mt-4 mb-4">
+    <main id="content" class="page-shell">
         <?php 
-        // get current date and time
         $dateTime = date("F j, Y, g:i a");
-        echo "Current Server Time: ".$dateTime;
         ?>
 
-<div class="row mt-2">
-    <!-- User Column -->
-    <div class="col-md-3">
-        <div class="card mt-1 alert alert-primary">
-            <div class="card-body">
-                <h2 class="card-title">Eduroam Users</h2>
-                <p>Total Users:
-                    <?php echo $totalUsers; ?>
-                </p>
-                <p>Active Users:
-                    <?php echo $activeUsers; ?>
-                </p>
-                <p>Banned Users:
-                    <?php echo $bannedUsers; echo '<br /><br />'; ?>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Server Column -->
-    <div class="col-md-3">
-        <div class="card mt-1 alert alert-primary">
-            <div class="card-body">
-                <h2 class="card-title">Server</h2>
-                <p>Date:
-                    <?php echo $date; ?>
-                </p>
-                <p>Hostname:
-                    <?php echo $hostname; ?>
-                </p>
-                <p>Uptime:
-                    <?php echo $uptime; ?>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Memory Column -->
-    <div class="col-md-3">
-        <div class="card mt-1 alert alert-primary">
-            <div class="card-body">
-                <h2 class="card-title">Memory</h2>
-                <p>Total Memory:
-                    <?php echo $totalMemory; ?>
-                </p>
-                <p>Free Memory:
-                    <?php echo $freeMemory; ?>
-                </p>
-                <p>Used Memory:
-                    <?php echo $usedMemory; echo '<br /><br />'; ?>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Storage Column -->
-    <div class="col-md-3">
-        <div class="card mt-1 alert alert-primary">
-            <div class="card-body">
-                <h2 class="card-title">Storage</h2>
-                <p>Total Disk:
-                    <?php echo $totalDisk; ?>
-                </p>
-                <p>Free Disk:
-                    <?php echo $freeDisk; ?>
-                </p>
-                <p>Used Disk:
-                    <?php echo $usedDisk; echo '<br /><br />'; ?>
-                </p>
-            </div>
-        </div>
+<div class="hero-banner">
+    <div>
+        <span class="eyebrow">Dashboard</span>
+        <h1><?php echo htmlspecialchars($site_name); ?> Management</h1>
+        <p class="meta mb-0">Current server time: <?php echo htmlspecialchars($dateTime); ?></p>
     </div>
 </div>
 
-        <div class="m-2 row alert-info align-middle border">
-            <!-- <h4 class="mt-4 text-center">Bulk Import</h4> -->
-            <div class="col-md-8">
-                <div class="container mt-2">
-                    <div class="row p-3 mb-2">
-                        <form action="import.php" method="post" enctype="multipart/form-data">
-                            <input type="file" name="upcsv" accept=".csv" required="">
-                            <input type="submit" value="Upload">
-                            <a href="sample.csv" class="border text-dark p-1" type="clear">Download
-                                Sample</a>
-                        </form>
-                    </div>
+<div class="dashboard-grid">
+    <div class="stat-card">
+        <h2>Eduroam Users</h2>
+        <p>Total Users: <strong><?php echo $totalUsers; ?></strong></p>
+        <p>Active Users: <strong><?php echo $activeUsers; ?></strong></p>
+        <p>Banned Users: <strong><?php echo $bannedUsers; ?></strong></p>
+    </div>
+
+    <div class="stat-card">
+        <h2>Server</h2>
+        <p>Date: <strong><?php echo $date; ?></strong></p>
+        <p>Hostname: <strong><?php echo $hostname; ?></strong></p>
+        <p>Uptime: <strong><?php echo $uptime; ?></strong></p>
+    </div>
+
+    <div class="stat-card">
+        <h2>Memory</h2>
+        <p>Total Memory: <strong><?php echo $totalMemory; ?></strong></p>
+        <p>Free Memory: <strong><?php echo $freeMemory; ?></strong></p>
+        <p>Used Memory: <strong><?php echo $usedMemory; ?></strong></p>
+    </div>
+
+    <div class="stat-card">
+        <h2>Storage</h2>
+        <p>Total Disk: <strong><?php echo $totalDisk; ?></strong></p>
+        <p>Free Disk: <strong><?php echo $freeDisk; ?></strong></p>
+        <p>Used Disk: <strong><?php echo $usedDisk; ?></strong></p>
+    </div>
+</div>
+
+<div class="dashboard-grid dashboard-grid--secondary">
+    <div class="stat-card">
+        <h2>Guest Accounts</h2>
+        <p>Total Issued: <strong><?php echo $guestTotal; ?></strong></p>
+        <p>Currently Active: <strong><?php echo $guestActive; ?></strong></p>
+        <p>Expired Records: <strong><?php echo $guestExpired; ?></strong></p>
+    </div>
+
+    <div class="stat-card">
+        <h2>Radius Activity</h2>
+        <p>Auth Attempts (14d): <strong><?php echo array_sum($authDailyChart['values']); ?></strong></p>
+        <p>Recorded Sessions (14d): <strong><?php echo array_sum($sessionHourlyChart['values']); ?></strong></p>
+        <p>Expiring Soon (6h): <strong><?php echo $guestPendingExpiry; ?></strong></p>
+    </div>
+</div>
+
+        <div class="toolbar-card">
+            <div class="toolbar-grid">
+                <div>
+                    <form action="import.php" method="post" enctype="multipart/form-data" class="upload-form">
+                        <input type="file" name="upcsv" accept=".csv" required="">
+                        <div class="toolbar-actions">
+                            <input type="submit" value="Upload" class="btn btn-primary">
+                            <a href="sample.csv" class="btn btn-outline-secondary" type="clear">Download Sample</a>
+                        </div>
+                    </form>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="container mt-4">
-                    <form action="" method="GET">
-                        <div class="input-group mb-3 mt-4">
-                            <input type="text" name="search" required="" value="<?php if(isset($_GET['search'])){ echo $_GET['search'];} ?>" class="form-control" placeholder="Search data">
-                            <button type="submit" class="btn btn-primary">Search</button>&nbsp;&nbsp;
+                <div>
+                    <form action="" method="GET" class="search-form">
+                        <div class="search-row">
+                            <input type="text" name="search" required="" value="<?php if(isset($_GET['search'])){ echo $_GET['search'];} ?>" class="form-control" placeholder="Search users by name or username">
+                            <button type="submit" class="btn btn-primary">Search</button>
                             <a href="/eduroam/management.php" class="btn btn-warning" type="clear">Clear</a>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+
+        <section class="analytics-grid">
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">Guest Accounts</span>
+                        <h2>Requests Over The Last 14 Days</h2>
+                    </div>
+                </div>
+                <canvas id="guestDailyChart"></canvas>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">Lifecycle</span>
+                        <h2>Active vs Expired Accounts</h2>
+                    </div>
+                </div>
+                <canvas id="guestStatusChart"></canvas>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">FreeRADIUS</span>
+                        <h2>Authentication Attempts</h2>
+                    </div>
+                </div>
+                <canvas id="authDailyChart"></canvas>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">FreeRADIUS</span>
+                        <h2>Sessions By Hour</h2>
+                    </div>
+                </div>
+                <canvas id="sessionHourlyChart"></canvas>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">System Capacity</span>
+                        <h2>Memory and Disk Utilization</h2>
+                    </div>
+                </div>
+                <canvas id="systemCapacityChart"></canvas>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">FreeRADIUS</span>
+                        <h2>Authentication Outcomes</h2>
+                    </div>
+                </div>
+                <canvas id="authReplyChart"></canvas>
+            </article>
+
+            <article class="chart-card chart-card--wide">
+                <div class="chart-header">
+                    <div>
+                        <span class="chart-eyebrow">Network Access Servers</span>
+                        <h2>Top NAS By Session Count</h2>
+                    </div>
+                </div>
+                <canvas id="topNasChart"></canvas>
+            </article>
+        </section>
 
         <?php
         if ($_SERVER['PHP_AUTH_USER'] === $authUser && $_SERVER['PHP_AUTH_PW'] === $authPass) {
@@ -337,7 +415,7 @@ require_once 'includes/config.php';
                 $offset = ($page - 1) * $records_per_page;
             
                 // Prepare the SQL query with pagination
-                $query = "SELECT userinfo.username, userinfo.fullname, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate FROM userinfo INNER JOIN radcheck ON userinfo.username = radcheck.username WHERE userinfo.username LIKE :filtervalues OR userinfo.fullname LIKE :filtervalues";
+                $query = "SELECT userinfo.username, userinfo.fullname, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate FROM userinfo INNER JOIN radcheck ON userinfo.username = radcheck.username AND radcheck.attribute = 'Cleartext-Password' WHERE userinfo.username LIKE :filtervalues OR userinfo.fullname LIKE :filtervalues";
             
                 // Add wildcard characters to the filtervalues
                 $filtervalues = "%" . $filtervalues . "%";
@@ -364,7 +442,7 @@ require_once 'includes/config.php';
                 // Fetch the results as an associative array
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-                echo '<div class="container mt-4 table-responsive">';
+                echo '<section class="table-card table-responsive">';
                 echo '<h2>Search Results</h2>';
             
                 if (count($results) > 0) {
@@ -420,48 +498,22 @@ require_once 'includes/config.php';
                 } else {
                     echo 'No Record Found';
                 }
-                echo '</div>';
+                echo '</section>';
             }
 
-            // Select all from eduroam_request table
-            $sql = "SELECT * FROM eduroam_request";
-            $result = mysqli_query($conn, $sql);
-
-            echo '<div class="container mt-4 table-responsive">';
-            echo '<h2>Eduroam Requests</h2>';
-
-            if (mysqli_num_rows($result) > 0) {
-                echo '<table class="table table-bordered table-striped">';
-                echo '<thead class="thead-dark">';
-                echo '<tr><th>Full Name</th><th>Email</th><th>Created At</th><th>Actions</th></tr>';
-                echo '</thead>';
-                echo '<tbody>';
-                while ($row = mysqli_fetch_assoc($result)) {
-                    echo "<tr>";
-                    echo "<td>" . htmlspecialchars($row["fullname"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["org_email"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["created_at"]) . "</td>";
-                    echo "<td><a href='javascript:void(0);' onclick=\"approveRequest('" . htmlspecialchars($row['id']) . "');\" class='btn btn-primary' data-hint='Approve User Account'>Approve</a>&nbsp;<a href='javascript:void(0);' onclick=\"rejectRequest('" . htmlspecialchars($row['id']) . "');\" class='btn btn-danger' data-hint='Reject User Account'>Reject</a></td>";
-                    echo "</tr>";
-                }
-                echo '</tbody>';
-                echo '</table>';
-            } else {
-                echo "0 results";
-            }
-            echo '</div>';
+                echo '<div class="alert info-banner">Guest requests are auto-approved. Accounts are created immediately and expired accounts are purged automatically.</div>';
 
             // join userinfo and radcheck table by username and populate all data limit 10 latest
-            $sql = "SELECT userinfo.fullname, userinfo.username, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate FROM userinfo JOIN radcheck ON userinfo.username = radcheck.username ORDER BY userinfo.updatedate DESC LIMIT 10";
+            $sql = "SELECT userinfo.fullname, userinfo.username, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate, guest_accounts.created_at AS requested_at, guest_accounts.expires_at FROM userinfo JOIN radcheck ON userinfo.username = radcheck.username AND radcheck.attribute = 'Cleartext-Password' LEFT JOIN guest_accounts ON userinfo.username = guest_accounts.username ORDER BY userinfo.updatedate DESC LIMIT 10";
 
             $result = mysqli_query($conn, $sql);
 
             if(mysqli_num_rows($result) > 0 ) {
-                echo '<div class="container mt-4 table-responsive">';
+                echo '<section class="table-card table-responsive">';
                 echo '<h2>Latest 10 Users</h2>';
                 echo '<table class="table table-bordered table-striped">';
                 echo '<thead class="thead-dark">';
-                echo '<tr><th>Full Name</th><th>Username</th><th>Email</th><th>Updated by</th><th>Updated At</th></tr>';
+                echo '<tr><th>Full Name</th><th>Username</th><th>Email</th><th>Requested At</th><th>Expires At</th><th>Updated by</th><th>Updated At</th></tr>';
                 echo '</thead>';
                 echo '<tbody>';
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -469,13 +521,15 @@ require_once 'includes/config.php';
                     echo "<td>" . htmlspecialchars($row["fullname"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["username"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["email"]) . "</td>";
+                    echo "<td>" . htmlspecialchars($row["requested_at"] ?? '-') . "</td>";
+                    echo "<td>" . htmlspecialchars($row["expires_at"] ?? '-') . "</td>";
                     echo "<td>" . htmlspecialchars($row["updateby"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["updatedate"]) . "</td>";
                     echo "</tr>";
                 }
                 echo '</tbody>';
                 echo '</table>';
-                echo '</div>';
+                echo '</section>';
             } else {
                 echo "0 results";
             }
@@ -486,9 +540,158 @@ require_once 'includes/config.php';
             echo 'Access Denied';
         }
         ?>
-    </div>
+    </main>
 
     <?php include 'template_parts/footer.php'; ?>
+    <script>
+        (function () {
+            const charts = <?php echo json_encode($chartPayload, JSON_UNESCAPED_SLASHES); ?>;
+
+            const chartDefaults = {
+                color: '#5a6f83',
+                font: {
+                    family: 'Sora, sans-serif'
+                }
+            };
+
+            Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+            function makeChart(id, config) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                new Chart(el, config);
+            }
+
+            makeChart('guestDailyChart', {
+                type: 'line',
+                data: {
+                    labels: charts.guestDaily.labels,
+                    datasets: [{
+                        label: 'Guest requests',
+                        data: charts.guestDaily.values,
+                        borderColor: '#0d3b6f',
+                        backgroundColor: 'rgba(13, 59, 111, 0.14)',
+                        fill: true,
+                        tension: 0.32
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+
+            makeChart('guestStatusChart', {
+                type: 'doughnut',
+                data: {
+                    labels: charts.guestStatus.labels,
+                    datasets: [{
+                        data: charts.guestStatus.values,
+                        backgroundColor: ['#0d3b6f', '#9eb5cc'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+
+            makeChart('authDailyChart', {
+                type: 'bar',
+                data: {
+                    labels: charts.authDaily.labels,
+                    datasets: [{
+                        label: 'Auth attempts',
+                        data: charts.authDaily.values,
+                        backgroundColor: '#1f5d9b',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+
+            makeChart('sessionHourlyChart', {
+                type: 'line',
+                data: {
+                    labels: charts.sessionHourly.labels,
+                    datasets: [{
+                        label: 'Sessions',
+                        data: charts.sessionHourly.values,
+                        borderColor: '#4c7bb0',
+                        backgroundColor: 'rgba(76, 123, 176, 0.14)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+
+            makeChart('systemCapacityChart', {
+                type: 'bar',
+                data: {
+                    labels: charts.systemCapacity.labels,
+                    datasets: [{
+                        label: 'GB',
+                        data: charts.systemCapacity.values,
+                        backgroundColor: ['#0d3b6f', '#6f9dcb', '#163f67', '#9eb5cc'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+
+            makeChart('authReplyChart', {
+                type: 'pie',
+                data: {
+                    labels: charts.authReply.labels,
+                    datasets: [{
+                        data: charts.authReply.values,
+                        backgroundColor: ['#0d3b6f', '#1f5d9b', '#9eb5cc', '#d4e1ee', '#4c7bb0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+
+            makeChart('topNasChart', {
+                type: 'bar',
+                data: {
+                    labels: charts.topNas.labels,
+                    datasets: [{
+                        label: 'Sessions',
+                        data: charts.topNas.values,
+                        backgroundColor: '#0d3b6f',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: chartDefaults
+                }
+            });
+        })();
+    </script>
 
 </body>
 </html>

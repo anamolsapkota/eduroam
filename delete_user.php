@@ -2,6 +2,7 @@
 
 // Include the config.php file
 require_once 'includes/config.php';
+require_once 'includes/guest_accounts.php';
 
 // Define the allowed URL
 $allowed_url = $site_baseurl . 'eduroam/management.php';
@@ -10,6 +11,7 @@ $allowed_url = $site_baseurl . 'eduroam/management.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], $allowed_url) === 0) {
     // Include your database connection code here
     include 'db.php';
+    ensureGuestAccountInfrastructure($pdo);
 
     // Check if the username (email) parameter is set
     if (isset($_POST['username'])) {
@@ -31,6 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_REFERER']) && 
             $stmt2 = $pdo->prepare($deleteQuery2);
             $stmt2->bindParam(':username', $username, PDO::PARAM_STR);
             $stmt2->execute();
+
+            $deleteQuery3 = "DELETE FROM guest_accounts WHERE username = :username";
+            $stmt3 = $pdo->prepare($deleteQuery3);
+            $stmt3->bindParam(':username', $username, PDO::PARAM_STR);
+            $stmt3->execute();
 
             // Commit the transaction
             $pdo->commit();
