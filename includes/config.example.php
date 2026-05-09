@@ -7,7 +7,7 @@ require(BASE_DIR . 'db.php');
 // require(BASE_DIR . 'includes/class.smtp.php');
 
 $site_baseurl = "https://idp-tu.nren.net.np/";
-define('GUEST_ACCOUNT_DURATION_HOURS', 24);
+define('GUEST_ACCOUNT_DURATION_HOURS', 168); // 7 days
 
 // Define allowed email domains
 $allowed_domains = [

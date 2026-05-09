@@ -47,7 +47,7 @@ require_once '../../includes/config.php';
         echo "<div class='hero-banner'><div><span class='eyebrow'>Admin Logs</span><h1>Recent Logs</h1><p class='meta mb-0'>Current server time: " . htmlspecialchars($dateTime) . "</p></div></div>";
         ?>
 <?php
-            echo "<section class='table-card overflow-hide'>";
+            echo "<section class='table-card'>";
             include '../../log.php';
             echo "</section>";
         ?>

@@ -497,6 +497,16 @@ a {
     padding: 2rem;
 }
 
+.auth-card--admin {
+    width: min(100%, 620px);
+    padding: 0;
+    overflow: hidden;
+}
+
+.auth-card-inner {
+    padding: 2.25rem;
+}
+
 .auth-card--wide {
     width: min(100%, 760px);
 }
@@ -546,6 +556,23 @@ a {
     line-height: 1.7;
 }
 
+.auth-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-form .form-label {
+    color: var(--brand-dark);
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+}
+
+.auth-footnote {
+    margin-top: 1rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
 .subtle-link {
     color: var(--brand);
     text-decoration: none;
@@ -564,6 +591,10 @@ a {
     background: transparent;
     backdrop-filter: none;
     box-shadow: none;
+}
+
+.auth-card--admin #login {
+    all: unset;
 }
 
 #login input[type="text"]::placeholder,
@@ -770,6 +801,27 @@ a {
 
 .table-card .table tbody tr:hover {
     background: rgba(11, 92, 171, 0.03);
+}
+
+.log-viewer-meta {
+    margin-bottom: 0.9rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.log-viewer {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    min-height: 360px;
+    max-height: 70vh;
+    overflow: auto;
+    border-radius: 16px;
+    background: #081a2d;
+    color: #d6ecff;
+    border: 1px solid rgba(11, 92, 171, 0.2);
+    font: 0.88rem/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .faq-shell {
@@ -1081,6 +1133,10 @@ a {
     .table-card {
         padding: 1.15rem;
         border-radius: 18px;
+    }
+
+    .auth-card-inner {
+        padding: 1.15rem;
     }
 
     .dashboard-grid {

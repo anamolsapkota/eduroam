@@ -62,36 +62,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body id="logindiv" class="app-shell public-shell">
     <?php include_once dirname(__DIR__) . '/template_parts/nav.php'; ?>
     <main id="content" class="page-shell auth-shell">
-        <div id="login" class="auth-card">
-            <div class="auth-logo-wrap">
-                <div class="auth-logo-pair">
-                    <img src="/eduroam/assets/images/nren-logo.jpg" alt="NREN logo" class="auth-logo">
-                    <img src="/eduroam/assets/images/eduroam-logo.png" alt="eduroam logo" class="auth-logo auth-logo--wide">
+        <section class="auth-card auth-card--admin">
+            <div class="auth-card-inner">
+                <div class="auth-logo-wrap">
+                    <div class="auth-logo-pair">
+                        <img src="/eduroam/assets/images/nren-logo.jpg" alt="NREN logo" class="auth-logo">
+                        <img src="/eduroam/assets/images/eduroam-logo.png" alt="eduroam logo" class="auth-logo auth-logo--wide">
+                    </div>
+                </div>
+                <span class="auth-kicker">Administrator Access</span>
+                <h1 class="auth-title"><?php echo $site_name; ?> Management</h1>
+                <p class="auth-subtitle">Sign in to manage guest credentials, review recent accounts, and update the delivery settings.</p>
+                <?php if (isset($_SESSION['alert']) && $_SESSION['alert']) : ?>
+                    <div class="alert alert-warning" role="alert">
+                        <?php echo $_SESSION['alert']; ?>
+                    </div>
+                    <?php unset($_SESSION['alert']); ?>
+                <?php endif; ?>
+                <form action="" method="POST" class="auth-form">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Enter username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <div class="auth-footnote">
+                    Restricted to authorized eduroam Visitor Access administrators only.
                 </div>
             </div>
-            <span class="auth-kicker">Administrator Access</span>
-            <h1 class="auth-title"><?php echo $site_name; ?> Management</h1>
-            <p class="auth-subtitle">Sign in to manage guest credentials, review recent accounts, and update the delivery settings.</p>
-            <!-- If alert in session, show Bootstrap warning alert -->
-            <?php if (isset($_SESSION['alert']) && $_SESSION['alert']) : ?>
-                <div class="alert alert-warning" role="alert">
-                    <?php echo $_SESSION['alert']; ?>
-                </div>
-                <?php unset($_SESSION['alert']); ?>
-            <?php endif; ?>
-            <!-- Username and password form -->
-            <form action="" method="POST">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" placeholder="Enter username" required>
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Login</button>
-            </form>
-        </div>
+        </section>
     </main>
     <?php include_once dirname(__DIR__) . '/template_parts/footer.php'; ?>
 </body>
