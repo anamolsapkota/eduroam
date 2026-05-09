@@ -400,7 +400,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     <h2>Create Guest Account Manually</h2>
                 </div>
             </div>
-            <p class="auth-subtitle">Issue a 24-hour guest account directly from the dashboard. The same username format, automatic expiry, and cleanup rules are applied here as well.</p>
+            <p class="auth-subtitle">Issue a <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> guest account directly from the dashboard. The same username format, automatic expiry, and cleanup rules are applied here as well.</p>
             <form method="POST" action="" class="manual-create-form">
                 <input type="hidden" name="manual_create_user" value="1">
                 <div class="manual-create-grid">

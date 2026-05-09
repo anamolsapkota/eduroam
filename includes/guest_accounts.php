@@ -1,8 +1,29 @@
 <?php
 
-function guestAccountExpiresAtDb($hours = 24)
+function guestAccountDurationHours()
 {
-    return date('Y-m-d H:i:s', strtotime('+' . (int) $hours . ' hours'));
+    if (defined('GUEST_ACCOUNT_DURATION_HOURS')) {
+        return max(1, (int) GUEST_ACCOUNT_DURATION_HOURS);
+    }
+
+    return 24;
+}
+
+function guestAccountDurationLabel()
+{
+    $hours = guestAccountDurationHours();
+
+    if ($hours === 1) {
+        return '1 hour';
+    }
+
+    return $hours . ' hours';
+}
+
+function guestAccountExpiresAtDb($hours = null)
+{
+    $hours = $hours === null ? guestAccountDurationHours() : max(1, (int) $hours);
+    return date('Y-m-d H:i:s', strtotime('+' . $hours . ' hours'));
 }
 
 function guestAccountExpiresAtRadius($expiresAtDb)
@@ -108,7 +129,8 @@ function createGuestAccount(PDO $pdo, $fullname, $email, $updatedBy = 'auto_requ
     $username = generateGuestUsername($pdo, $fullname);
     $password = generateRandomPassword(8);
     $createdAt = date('Y-m-d H:i:s');
-    $expiresAtDb = guestAccountExpiresAtDb(24);
+    $durationHours = guestAccountDurationHours();
+    $expiresAtDb = guestAccountExpiresAtDb($durationHours);
     $expiresAtRadius = guestAccountExpiresAtRadius($expiresAtDb);
 
     $pdo->beginTransaction();
@@ -158,6 +180,8 @@ function createGuestAccount(PDO $pdo, $fullname, $email, $updatedBy = 'auto_requ
         'fullname' => $fullname,
         'delivery_email' => $email,
         'created_at' => $createdAt,
+        'duration_hours' => $durationHours,
+        'duration_label' => guestAccountDurationLabel(),
         'expires_at_db' => $expiresAtDb,
         'expires_at_radius' => $expiresAtRadius,
         'expires_at_display' => guestAccountExpiresAtDisplay($expiresAtDb),
@@ -172,7 +196,7 @@ function buildGuestCredentialEmail($fullname, $username, $password, $expiresAtDi
         </div>
         <div style="padding: 20px;">
             <p>Dear ' . htmlspecialchars($fullname) . ',</p>
-            <p>Your 24-hour guest eduroam account has been created automatically.</p>
+            <p>Your ' . htmlspecialchars(guestAccountDurationLabel()) . ' guest eduroam account has been created automatically.</p>
             <p>Here are the details to connect to Eduroam:</p>
             <ul>
                 <li><strong>Network Name (SSID):</strong> eduroam</li>
@@ -233,7 +257,7 @@ function repairExistingGuestAccounts(PDO $pdo)
             }
 
             $createdAt = $target['created_at'] ?: $target['updatedate'] ?: date('Y-m-d H:i:s');
-            $expiresAtDb = $target['expires_at'] ?: date('Y-m-d H:i:s', strtotime($createdAt . ' +24 hours'));
+            $expiresAtDb = $target['expires_at'] ?: date('Y-m-d H:i:s', strtotime($createdAt . ' +' . guestAccountDurationHours() . ' hours'));
             $expiresAtRadius = guestAccountExpiresAtRadius($expiresAtDb);
 
             $upsertGuestStmt->execute([

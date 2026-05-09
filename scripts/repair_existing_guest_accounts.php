@@ -1,6 +1,6 @@
 <?php
 
-require_once dirname(__DIR__) . '/db.php';
+require_once dirname(__DIR__) . '/includes/config.php';
 require_once dirname(__DIR__) . '/includes/guest_accounts.php';
 
 try {

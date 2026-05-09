@@ -53,7 +53,7 @@ $seo_schema = json_encode([
                     <li>Guests submit their name and delivery email.</li>
                     <li>Usernames are generated automatically in FreeRADIUS.</li>
                     <li>Credentials are emailed immediately after creation.</li>
-                    <li>Accounts expire after 24 hours and are purged automatically.</li>
+                    <li>Accounts expire after <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> and are purged automatically.</li>
                 </ul>
             </div>
         </div>

@@ -6,7 +6,7 @@ require_once 'includes/email.php';
 require_once 'includes/guest_accounts.php';
 
 $seo_title = $site_name . ' | Request Guest Access';
-$seo_description = 'Request a temporary eduroam Visitor Access account and receive secure guest Wi-Fi credentials by email for 24-hour use.';
+$seo_description = 'Request a temporary eduroam Visitor Access account and receive secure guest Wi-Fi credentials by email for ' . guestAccountDurationLabel() . ' use.';
 $seo_canonical = 'https://eva.nren.net.np/eduroam/request.php';
 $seo_type = 'website';
 
@@ -87,7 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
 
             <div class="request-metrics">
                 <div class="request-metric">
-                    <strong>24 Hours</strong>
+                    <strong><?php echo htmlspecialchars(guestAccountDurationLabel()); ?></strong>
                     <span>Automatic access period</span>
                 </div>
                 <div class="request-metric">
@@ -123,7 +123,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
                 <ul class="feature-list">
                     <li>A generated eduroam username in the `@eva.nren.net.np` domain.</li>
                     <li>A temporary password sent to your personal email address.</li>
-                    <li>Automatic account expiry after 24 hours for controlled visitor access.</li>
+                    <li>Automatic account expiry after <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> for controlled visitor access.</li>
                 </ul>
             </div>
         </div>
@@ -131,7 +131,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
         <div class="request-panel">
             <div class="app-hero">
                 <span class="auth-kicker">Guest Access</span>
-                <h2 class="auth-title request-title">Request a 24-hour eduroam account</h2>
+                <h2 class="auth-title request-title">Request a <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> eduroam account</h2>
                 <p class="auth-subtitle">Use the name you want reflected in the generated username and provide the email address where the access details should be delivered.</p>
             </div>
 
@@ -154,7 +154,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
                             required>
                     </div>
                     <div class="request-note">
-                        The generated guest account is valid for 24 hours from creation. If needed, you can reset the password during the active access period.
+                        The generated guest account is valid for <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> from creation. If needed, you can reset the password during the active access period.
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg w-100">Request Access</button>
                 </form>
