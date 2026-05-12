@@ -768,3 +768,27 @@
         padding: 12px;
     }
 }
+
+/* ===== Admin Footer ===== */
+.admin-footer {
+    margin-top: 2rem;
+    padding: 1.25rem 0;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.admin-footer p {
+    color: #64748b;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.admin-footer a {
+    color: #0d3b6f;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.admin-footer a:hover {
+    text-decoration: underline;
+}

@@ -385,6 +385,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["org_email"]) && isset(
     <footer class="page-footer">
         <div class="container">
             <p>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($site_name); ?>. All Rights Reserved.</p>
+            <p style="margin-top: 0.25rem;">Designed and Developed by <a href="https://sapkotaanamol.com.np" target="_blank">Anamol Sapkota</a></p>
         </div>
     </footer>
 </body>
