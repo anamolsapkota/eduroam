@@ -3,15 +3,17 @@
 require_once dirname(__DIR__) . '/includes/radius_monitoring.php';
 
 try {
-    $snapshot = radiusMonitorAppendSnapshot();
+    $dryRun = in_array('--dry-run', $argv ?? [], true);
+    $snapshot = $dryRun ? radiusMonitorCollectSnapshot() : radiusMonitorAppendSnapshot();
     fwrite(
         STDOUT,
         sprintf(
-            "[%s] accepts=%d rejects=%d invalids=%d\n",
+            "[%s] accepts=%d rejects=%d invalids=%d%s\n",
             $snapshot['timestamp'],
             $snapshot['accepts'],
             $snapshot['rejects'],
-            $snapshot['invalids']
+            $snapshot['invalids'],
+            $dryRun ? ' dry-run' : ''
         )
     );
 } catch (Throwable $e) {

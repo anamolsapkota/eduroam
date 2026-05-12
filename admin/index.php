@@ -406,6 +406,9 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
         <p class="meta mb-0">Current server time: <?php echo htmlspecialchars($dateTime); ?></p>
     </div>
     <div class="hero-actions">
+        <a href="/eduroam/admin/graphs/" class="btn btn-outline-light">
+            <i class="fas fa-chart-area me-2"></i>Monitoring
+        </a>
         <a href="/eduroam/admin/analytics/" class="btn btn-outline-light">
             <i class="fas fa-chart-line me-2"></i>Analytics
         </a>

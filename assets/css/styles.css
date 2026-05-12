@@ -795,6 +795,41 @@ a {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.radius-monitor-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.radius-monitor-chart-card {
+    margin-bottom: 1.5rem;
+}
+
+.radius-monitor-chart-card canvas {
+    height: 360px !important;
+}
+
+.radius-monitor-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cron-snippet {
+    margin: 0;
+    padding: 1rem;
+    border-radius: 10px;
+    background: #081a2d;
+    color: #d6ecff;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.radius-monitor-recent {
+    min-height: 220px;
+    max-height: 360px;
+}
+
+.radius-monitor-summary .chart-summary-item {
+    max-width: 100%;
+}
+
 .user-management-result {
     margin-bottom: 1.5rem;
 }
@@ -1327,6 +1362,8 @@ a {
     .dashboard-grid--secondary,
     .analytics-grid,
     .analytics-summary-grid,
+    .radius-monitor-stats,
+    .radius-monitor-detail-grid,
     .user-management-stats,
     .user-filter-grid {
         grid-template-columns: 1fr;

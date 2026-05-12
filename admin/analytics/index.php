@@ -223,6 +223,9 @@ $chartPayload = [
                 <p class="meta mb-0">Guest lifecycle, FreeRADIUS activity, NAS usage, and system capacity.</p>
             </div>
             <div class="hero-actions">
+                <a href="/eduroam/admin/graphs/" class="btn btn-outline-light">
+                    <i class="fas fa-chart-area me-2"></i>Monitoring
+                </a>
                 <a href="/eduroam/admin/" class="btn btn-outline-light">
                     <i class="fas fa-gauge-high me-2"></i>Dashboard
                 </a>

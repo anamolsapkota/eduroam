@@ -29,6 +29,9 @@
                     <a class="nav-link" href="/eduroam/admin/analytics/">Analytics</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="/eduroam/admin/graphs/">Monitoring</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="/eduroam/admin/nas">NAS</a>
                 </li>
                 <li class="nav-item">
