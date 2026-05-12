@@ -29,15 +29,24 @@ To install and configure the Eduroam system, follow these steps:
 5. Run the initialization script:
     Visit `https://yoursite.edu.np/eduroam/includes/init.php` in your browser.
 
+6. Set up the cron job for monitoring data collection (required for the Monitoring/Graphs page):
+    ```
+    */10 * * * * /usr/bin/php /var/www/yoursite/eduroam/scripts/collect_radius_auth_stats.php >/dev/null 2>&1
+    ```
+    This collects FreeRADIUS authentication stats every 10 minutes and stores them as CSV samples for the monitoring charts.
+
 ## Usage
 
 Once the installation and configuration are complete, you can use the following URLs:
 
-- **Eduroam Request URL:**  
-  Visit `https://yoursite.edu.np/edutoam/request.php` to access the Eduroam request page.
+- **Eduroam Request Page:**  
+  `https://yoursite.edu.np/eduroam/request.php`
 
-- **Eduroam Management URL:**
-  Visit `https://yoursite.edu.np/eduroam/management.php` to access the Eduroam Management page.
+- **Admin Dashboard:**  
+  `https://yoursite.edu.np/eduroam/admin/`
+
+- **Forgot Password:**  
+  `https://yoursite.edu.np/eduroam/forgotpass.php`
 
 ## Contributing
 
