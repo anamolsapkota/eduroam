@@ -1,6 +1,8 @@
 <?php
 // Start the session if not already started
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Check if 'basic_auth' session variable is set
 if(!isset($_SESSION['basic_auth']) || empty($_SESSION['basic_auth'])) {
@@ -86,6 +88,25 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
         return ['labels' => $labels, 'values' => $values];
     }
 
+    function buildForwardDailySeries($rows, $days = 14)
+    {
+        $labels = [];
+        $values = [];
+        $rowMap = [];
+
+        foreach ($rows as $row) {
+            $rowMap[$row['period']] = (int) $row['count'];
+        }
+
+        for ($i = 0; $i < $days; $i++) {
+            $day = date('Y-m-d', strtotime("+$i days"));
+            $labels[] = date('M j', strtotime($day));
+            $values[] = $rowMap[$day] ?? 0;
+        }
+
+        return ['labels' => $labels, 'values' => $values];
+    }
+
     function buildHourlySeries($rows)
     {
         $labels = [];
@@ -104,6 +125,66 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
         return ['labels' => $labels, 'values' => $values];
     }
 
+    function formatDashboardDate($value)
+    {
+        if (!$value) {
+            return '-';
+        }
+
+        $timestamp = strtotime($value);
+
+        if (!$timestamp) {
+            return $value;
+        }
+
+        return date('M j, Y g:i A', $timestamp);
+    }
+
+    function formatAccountExpiry($expiresAt, $radiusExpiresAt = null)
+    {
+        if ($expiresAt) {
+            return formatDashboardDate($expiresAt);
+        }
+
+        return $radiusExpiresAt ? formatDashboardDate($radiusExpiresAt) : '-';
+    }
+
+    function accountExpiryStatus($expiresAt, $radiusExpiresAt = null)
+    {
+        if (!$expiresAt && $radiusExpiresAt) {
+            $expiresAt = $radiusExpiresAt;
+        }
+
+        if (!$expiresAt) {
+            return '-';
+        }
+
+        $expiryTime = strtotime($expiresAt);
+
+        if (!$expiryTime) {
+            return '-';
+        }
+
+        $secondsRemaining = $expiryTime - time();
+
+        if ($secondsRemaining <= 0) {
+            return 'Expired';
+        }
+
+        if ($secondsRemaining < 3600) {
+            $minutes = max(1, (int) ceil($secondsRemaining / 60));
+            return 'Expires in ' . $minutes . ' min';
+        }
+
+        if ($secondsRemaining < 86400) {
+            $hours = max(1, (int) ceil($secondsRemaining / 3600));
+            return 'Expires in ' . $hours . ' hr';
+        }
+
+        $days = max(1, (int) ceil($secondsRemaining / 86400));
+        return 'Expires in ' . $days . ' day' . ($days === 1 ? '' : 's');
+    }
+
     include dirname(__DIR__) . '/db.php';
     ensureGuestAccountInfrastructure($pdo);
     purgeExpiredGuestAccounts($pdo);
@@ -111,10 +192,10 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
     $manualCreateAlert = null;
     $manualCreateResult = null;
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manual_create_user'])) {
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['manual_create_user'])) {
         $manualFullname = trim($_POST['manual_fullname'] ?? '');
         $manualEmail = trim($_POST['manual_email'] ?? '');
-        $manualSendEmail = isset($_POST['manual_send_email']) && $_POST['manual_send_email'] === '1';
+        $manualSendEmail = true;
         $updatedBy = $_SESSION['user']['username'] ?? 'admin_manual';
 
         try {
@@ -143,9 +224,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
 
             $manualCreateAlert = [
                 'type' => 'success',
-                'message' => $manualSendEmail
-                    ? 'Guest account created successfully and the credentials email was sent.'
-                    : 'Guest account created successfully. Share the credentials below with the guest.'
+                'message' => 'Guest account created successfully and the credentials email was sent.'
             ];
         } catch (InvalidArgumentException | RuntimeException $e) {
             $manualCreateAlert = [
@@ -202,7 +281,9 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
     $guestActive = 0;
     $guestExpired = 0;
     $guestPendingExpiry = 0;
+    $nextGuestExpiry = '-';
     $guestDailyChart = ['labels' => [], 'values' => []];
+    $guestExpiryChart = ['labels' => [], 'values' => []];
     $guestStatusChart = ['labels' => ['Active', 'Expired'], 'values' => [0, 0]];
 
     if ($guestAccountsExists) {
@@ -210,11 +291,19 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
         $guestActive = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts WHERE expires_at > NOW()")->fetchColumn();
         $guestExpired = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts WHERE expires_at <= NOW()")->fetchColumn();
         $guestPendingExpiry = (int) $pdo->query("SELECT COUNT(*) FROM guest_accounts WHERE expires_at BETWEEN NOW() AND NOW() + INTERVAL 6 HOUR")->fetchColumn();
+        $nextGuestExpiryValue = $pdo->query("SELECT MIN(expires_at) FROM guest_accounts WHERE expires_at > NOW()")->fetchColumn();
+        $nextGuestExpiry = formatDashboardDate($nextGuestExpiryValue);
         $guestStatusChart['values'] = [$guestActive, $guestExpired];
 
         $guestDailyStmt = $pdo->query("SELECT DATE(created_at) AS period, COUNT(*) AS count FROM guest_accounts WHERE created_at >= NOW() - INTERVAL 14 DAY GROUP BY DATE(created_at) ORDER BY DATE(created_at)");
         $guestDailyChart = buildDailySeries($guestDailyStmt->fetchAll(PDO::FETCH_ASSOC), 14);
+
+        $guestExpiryStmt = $pdo->query("SELECT DATE(expires_at) AS period, COUNT(*) AS count FROM guest_accounts WHERE expires_at >= CURDATE() AND expires_at < CURDATE() + INTERVAL 14 DAY GROUP BY DATE(expires_at) ORDER BY DATE(expires_at)");
+        $guestExpiryChart = buildForwardDailySeries($guestExpiryStmt->fetchAll(PDO::FETCH_ASSOC), 14);
     }
+
+    $authTotalRecords = (int) $pdo->query("SELECT COUNT(*) FROM radpostauth")->fetchColumn();
+    $sessionTotalRecords = (int) $pdo->query("SELECT COUNT(*) FROM radacct")->fetchColumn();
 
     $authDailyStmt = $pdo->query("SELECT DATE(authdate) AS period, COUNT(*) AS count FROM radpostauth WHERE authdate >= NOW() - INTERVAL 14 DAY GROUP BY DATE(authdate) ORDER BY DATE(authdate)");
     $authDailyChart = buildDailySeries($authDailyStmt->fetchAll(PDO::FETCH_ASSOC), 14);
@@ -246,6 +335,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
 
     $chartPayload = [
         'guestDaily' => $guestDailyChart,
+        'guestExpiry' => $guestExpiryChart,
         'guestStatus' => $guestStatusChart,
         'authDaily' => $authDailyChart,
         'sessionHourly' => $sessionHourlyChart,
@@ -271,7 +361,6 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
     <title><?php echo $site_name; ?> Management</title>
     <link rel="stylesheet" href="/eduroam/assets/css/styles.css">
     <?php include dirname(__DIR__) . '/template_parts/head.php'; ?>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script>
         function deleteUser(username) {
             if (confirm('Are you sure you want to delete this user?')) {
@@ -316,6 +405,14 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
         <h1><?php echo htmlspecialchars($site_name); ?> Management</h1>
         <p class="meta mb-0">Current server time: <?php echo htmlspecialchars($dateTime); ?></p>
     </div>
+    <div class="hero-actions">
+        <a href="/eduroam/admin/analytics/" class="btn btn-outline-light">
+            <i class="fas fa-chart-line me-2"></i>Analytics
+        </a>
+        <a href="/eduroam/admin/logs/" class="btn btn-outline-light">
+            <i class="fas fa-file-lines me-2"></i>Logs
+        </a>
+    </div>
 </div>
 
 <div class="dashboard-grid">
@@ -354,13 +451,16 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
         <p>Total Issued: <strong><?php echo $guestTotal; ?></strong></p>
         <p>Currently Active: <strong><?php echo $guestActive; ?></strong></p>
         <p>Expired Records: <strong><?php echo $guestExpired; ?></strong></p>
+        <p>Expiring Soon (6h): <strong><?php echo $guestPendingExpiry; ?></strong></p>
+        <p>Next Expiry: <strong><?php echo htmlspecialchars($nextGuestExpiry); ?></strong></p>
     </div>
 
     <div class="stat-card">
         <h2>Radius Activity</h2>
         <p>Auth Attempts (14d): <strong><?php echo array_sum($authDailyChart['values']); ?></strong></p>
         <p>Recorded Sessions (14d): <strong><?php echo array_sum($sessionHourlyChart['values']); ?></strong></p>
-        <p>Expiring Soon (6h): <strong><?php echo $guestPendingExpiry; ?></strong></p>
+        <p>Total Auth Records: <strong><?php echo $authTotalRecords; ?></strong></p>
+        <p>Total Session Records: <strong><?php echo $sessionTotalRecords; ?></strong></p>
     </div>
 </div>
 
@@ -376,11 +476,11 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     </form>
                 </div>
                 <div>
-                    <form action="" method="GET" class="search-form">
+                    <form action="/eduroam/admin/users/" method="GET" class="search-form">
                         <div class="search-row">
-                            <input type="text" name="search" required="" value="<?php if(isset($_GET['search'])){ echo $_GET['search'];} ?>" class="form-control" placeholder="Search users by name or username">
+                            <input type="text" name="search" required="" value="<?php if(isset($_GET['search'])){ echo htmlspecialchars($_GET['search']);} ?>" class="form-control" placeholder="Search users by name or username">
                             <button type="submit" class="btn btn-primary">Search</button>
-                            <a href="/eduroam/admin/" class="btn btn-warning" type="clear">Clear</a>
+                            <a href="/eduroam/admin/users/" class="btn btn-warning" type="clear">Users</a>
                         </div>
                     </form>
                 </div>
@@ -400,7 +500,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     <h2>Create Guest Account Manually</h2>
                 </div>
             </div>
-            <p class="auth-subtitle">Issue a <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> guest account directly from the dashboard. The same username format, automatic expiry, and cleanup rules are applied here as well.</p>
+            <p class="auth-subtitle">Issue a <?php echo htmlspecialchars(guestAccountDurationLabel()); ?> guest account directly from the dashboard. Credentials are emailed to the guest and are not displayed in the admin interface.</p>
             <form method="POST" action="" class="manual-create-form">
                 <input type="hidden" name="manual_create_user" value="1">
                 <div class="manual-create-grid">
@@ -413,12 +513,6 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                         <input type="email" class="form-control" id="manual_email" name="manual_email" value="<?php echo htmlspecialchars($_POST['manual_email'] ?? ''); ?>" placeholder="guest@example.com" required>
                     </div>
                 </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" value="1" id="manual_send_email" name="manual_send_email" <?php echo !isset($_POST['manual_create_user']) || isset($_POST['manual_send_email']) ? 'checked' : ''; ?>>
-                    <label class="form-check-label" for="manual_send_email">
-                        Email the generated credentials to the guest automatically
-                    </label>
-                </div>
                 <div class="toolbar-actions">
                     <button type="submit" class="btn btn-primary">Create Guest Account</button>
                 </div>
@@ -429,7 +523,6 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     <h3>Latest manual account</h3>
                     <div class="manual-result-grid">
                         <div><span>Username</span><strong><?php echo htmlspecialchars($manualCreateResult['username']); ?></strong></div>
-                        <div><span>Password</span><strong><?php echo htmlspecialchars($manualCreateResult['password']); ?></strong></div>
                         <div><span>Email</span><strong><?php echo htmlspecialchars($manualCreateResult['delivery_email']); ?></strong></div>
                         <div><span>Expires At</span><strong><?php echo htmlspecialchars($manualCreateResult['expires_at_display']); ?></strong></div>
                     </div>
@@ -437,76 +530,15 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
             <?php endif; ?>
         </section>
 
-        <section class="analytics-grid">
-            <article class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">Guest Accounts</span>
-                        <h2>Requests Over The Last 14 Days</h2>
-                    </div>
-                </div>
-                <canvas id="guestDailyChart"></canvas>
-            </article>
-
-            <article class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">Lifecycle</span>
-                        <h2>Active vs Expired Accounts</h2>
-                    </div>
-                </div>
-                <canvas id="guestStatusChart"></canvas>
-            </article>
-
-            <article class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">FreeRADIUS</span>
-                        <h2>Authentication Attempts</h2>
-                    </div>
-                </div>
-                <canvas id="authDailyChart"></canvas>
-            </article>
-
-            <article class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">FreeRADIUS</span>
-                        <h2>Sessions By Hour</h2>
-                    </div>
-                </div>
-                <canvas id="sessionHourlyChart"></canvas>
-            </article>
-
-            <article class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">System Capacity</span>
-                        <h2>Memory and Disk Utilization</h2>
-                    </div>
-                </div>
-                <canvas id="systemCapacityChart"></canvas>
-            </article>
-
-            <article class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">FreeRADIUS</span>
-                        <h2>Authentication Outcomes</h2>
-                    </div>
-                </div>
-                <canvas id="authReplyChart"></canvas>
-            </article>
-
-            <article class="chart-card chart-card--wide">
-                <div class="chart-header">
-                    <div>
-                        <span class="chart-eyebrow">Network Access Servers</span>
-                        <h2>Top NAS By Session Count</h2>
-                    </div>
-                </div>
-                <canvas id="topNasChart"></canvas>
-            </article>
+        <section class="analytics-teaser">
+            <div>
+                <span class="chart-eyebrow">Analytics</span>
+                <h2>Charts now live on the analytics page</h2>
+                <p>Review guest requests, account expiry, FreeRADIUS activity, NAS usage, and system capacity in one focused view.</p>
+            </div>
+            <a href="/eduroam/admin/analytics/" class="btn btn-primary">
+                <i class="fas fa-chart-line me-2"></i>Open Analytics
+            </a>
         </section>
 
         <?php
@@ -525,7 +557,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                 $offset = ($page - 1) * $records_per_page;
             
                 // Prepare the SQL query with pagination
-                $query = "SELECT userinfo.username, userinfo.fullname, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate FROM userinfo INNER JOIN radcheck ON userinfo.username = radcheck.username AND radcheck.attribute = 'Cleartext-Password' WHERE userinfo.username LIKE :filtervalues OR userinfo.fullname LIKE :filtervalues";
+                $query = "SELECT userinfo.username, userinfo.fullname, userinfo.email, userinfo.updateby, userinfo.updatedate, guest_accounts.created_at AS requested_at, guest_accounts.expires_at, expiry_check.value AS radius_expires_at FROM userinfo INNER JOIN radcheck password_check ON userinfo.username = password_check.username AND password_check.attribute = 'Cleartext-Password' LEFT JOIN guest_accounts ON userinfo.username = guest_accounts.username LEFT JOIN radcheck expiry_check ON userinfo.username = expiry_check.username AND expiry_check.attribute = 'Expiration' WHERE userinfo.username LIKE :filtervalues OR userinfo.fullname LIKE :filtervalues";
             
                 // Add wildcard characters to the filtervalues
                 $filtervalues = "%" . $filtervalues . "%";
@@ -559,10 +591,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     $countersearch = ($page - 1) * $records_per_page + 1;
                     echo '<table class="table table-bordered table-striped">';
                     echo '<thead class="thead-dark">';
-                    echo '<tr><th>#</th><th>Full Name</th><th>Username</th>';
-                    if (isset($_GET['password']) && $_GET['password'] == 'show') {
-                        echo '<th>Password</th>';
-                    }
+                    echo '<tr><th>#</th><th>Full Name</th><th>Username</th><th>Email</th><th>Expires At</th><th>Status</th>';
                     echo '<th>Actions</th></tr>';
                     echo '</thead>';
                     foreach ($results as $row) {
@@ -570,9 +599,9 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                         echo "<td>" . $countersearch . "</td>";
                         echo "<td>" . htmlspecialchars($row['fullname']) . "</td>";
                         echo "<td>" . htmlspecialchars($row['username']) . "</td>";
-                        if (isset($_GET['password']) && $_GET['password'] == 'show') {
-                            echo "<td>" . htmlspecialchars($row['value']) . "</td>";
-                        }
+                        echo "<td>" . htmlspecialchars($row['email'] ?? '-') . "</td>";
+                        echo "<td>" . htmlspecialchars(formatAccountExpiry($row['expires_at'] ?? null, $row['radius_expires_at'] ?? null)) . "</td>";
+                        echo "<td>" . htmlspecialchars(accountExpiryStatus($row['expires_at'] ?? null, $row['radius_expires_at'] ?? null)) . "</td>";
                         echo "<td><a href='javascript:void(0);' onclick=\"deleteUser('" . htmlspecialchars($row['username']) . "');\" class='btn btn-danger' data-hint='Delete User Account'>Delete</a></td>";
                         echo "</tr>";
                         $countersearch++;
@@ -614,7 +643,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                 echo '<div class="alert info-banner">Guest requests are auto-approved. Accounts are created immediately and expired accounts are purged automatically.</div>';
 
             // join userinfo and radcheck table by username and populate all data limit 10 latest
-            $sql = "SELECT userinfo.fullname, userinfo.username, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate, guest_accounts.created_at AS requested_at, guest_accounts.expires_at FROM userinfo JOIN radcheck ON userinfo.username = radcheck.username AND radcheck.attribute = 'Cleartext-Password' LEFT JOIN guest_accounts ON userinfo.username = guest_accounts.username ORDER BY userinfo.updatedate DESC LIMIT 10";
+            $sql = "SELECT userinfo.fullname, userinfo.username, userinfo.email, userinfo.updateby, userinfo.updatedate, guest_accounts.created_at AS requested_at, guest_accounts.expires_at, expiry_check.value AS radius_expires_at FROM userinfo JOIN radcheck password_check ON userinfo.username = password_check.username AND password_check.attribute = 'Cleartext-Password' LEFT JOIN guest_accounts ON userinfo.username = guest_accounts.username LEFT JOIN radcheck expiry_check ON userinfo.username = expiry_check.username AND expiry_check.attribute = 'Expiration' ORDER BY userinfo.updatedate DESC LIMIT 10";
 
             $result = mysqli_query($conn, $sql);
 
@@ -623,7 +652,7 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                 echo '<h2>Latest 10 Users</h2>';
                 echo '<table class="table table-bordered table-striped">';
                 echo '<thead class="thead-dark">';
-                echo '<tr><th>Full Name</th><th>Username</th><th>Email</th><th>Requested At</th><th>Expires At</th><th>Updated by</th><th>Updated At</th></tr>';
+                echo '<tr><th>Full Name</th><th>Username</th><th>Email</th><th>Requested At</th><th>Expires At</th><th>Status</th><th>Updated by</th><th>Updated At</th></tr>';
                 echo '</thead>';
                 echo '<tbody>';
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -631,10 +660,11 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     echo "<td>" . htmlspecialchars($row["fullname"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["username"]) . "</td>";
                     echo "<td>" . htmlspecialchars($row["email"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["requested_at"] ?? '-') . "</td>";
-                    echo "<td>" . htmlspecialchars($row["expires_at"] ?? '-') . "</td>";
+                    echo "<td>" . htmlspecialchars(formatDashboardDate($row["requested_at"] ?? null)) . "</td>";
+                    echo "<td>" . htmlspecialchars(formatAccountExpiry($row["expires_at"] ?? null, $row["radius_expires_at"] ?? null)) . "</td>";
+                    echo "<td>" . htmlspecialchars(accountExpiryStatus($row["expires_at"] ?? null, $row["radius_expires_at"] ?? null)) . "</td>";
                     echo "<td>" . htmlspecialchars($row["updateby"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["updatedate"]) . "</td>";
+                    echo "<td>" . htmlspecialchars(formatDashboardDate($row["updatedate"])) . "</td>";
                     echo "</tr>";
                 }
                 echo '</tbody>';
@@ -656,15 +686,239 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
     <script>
         (function () {
             const charts = <?php echo json_encode($chartPayload, JSON_UNESCAPED_SLASHES); ?>;
+            if (!window.Chart) return;
+            const palette = {
+                blue: '#0b5cab',
+                navy: '#0d3b6f',
+                teal: '#0e9f8a',
+                amber: '#d97706',
+                purple: '#7c3aed',
+                red: '#dc2626',
+                slate: '#64748b',
+                sky: '#38bdf8'
+            };
 
-            const chartDefaults = {
-                color: '#5a6f83',
-                font: {
-                    family: 'Sora, sans-serif'
+            Chart.defaults.color = '#314a63';
+            Chart.defaults.font.family = 'Sora, sans-serif';
+            Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+            function formatNumber(value, unit) {
+                const number = Number(value);
+                const formatted = Number.isInteger(number) ? number.toString() : number.toLocaleString(undefined, {
+                    maximumFractionDigits: 2
+                });
+
+                return unit ? formatted + ' ' + unit : formatted;
+            }
+
+            const visibleValueLabels = {
+                id: 'visibleValueLabels',
+                afterDatasetsDraw(chart, args, options) {
+                    if (options === false) return;
+
+                    const { ctx, chartArea } = chart;
+                    const chartType = chart.config.type;
+                    const hideZero = options.hideZero !== false;
+
+                    ctx.save();
+                    ctx.font = '700 11px Sora, sans-serif';
+                    ctx.fillStyle = options.color || '#20364c';
+
+                    chart.data.datasets.forEach((dataset, datasetIndex) => {
+                        const meta = chart.getDatasetMeta(datasetIndex);
+                        if (!meta.visible) return;
+
+                        const total = dataset.data.reduce((sum, item) => {
+                            const itemValue = Number(item);
+                            return Number.isFinite(itemValue) ? sum + itemValue : sum;
+                        }, 0);
+
+                        meta.data.forEach((element, index) => {
+                            const value = Number(dataset.data[index]);
+                            if (!Number.isFinite(value) || (hideZero && value === 0)) return;
+
+                            const position = element.tooltipPosition();
+
+                            if (chartType === 'pie' || chartType === 'doughnut') {
+                                if (total > 0 && value / total < 0.08) return;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillStyle = '#ffffff';
+                                ctx.fillText(formatNumber(value), position.x, position.y);
+                                ctx.fillStyle = options.color || '#20364c';
+                                return;
+                            }
+
+                            if (chart.options.indexAxis === 'y') {
+                                ctx.textAlign = 'left';
+                                ctx.textBaseline = 'middle';
+                                const x = Math.min(position.x + 8, chartArea.right - 26);
+                                ctx.fillText(formatNumber(value, dataset.unit), x, position.y);
+                                return;
+                            }
+
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            ctx.fillText(formatNumber(value, dataset.unit), position.x, Math.max(position.y - 7, chartArea.top + 12));
+                        });
+                    });
+
+                    ctx.restore();
                 }
             };
 
-            Chart.defaults.plugins.legend.labels.usePointStyle = true;
+            const emptyState = {
+                id: 'emptyState',
+                afterDraw(chart, args, options) {
+                    if (options === false) return;
+
+                    const hasVisibleData = chart.data.datasets.some((dataset) => {
+                        return dataset.data.some((item) => Number(item) > 0);
+                    });
+
+                    if (hasVisibleData) return;
+
+                    const { ctx, chartArea } = chart;
+                    ctx.save();
+                    ctx.fillStyle = '#5a6f83';
+                    ctx.font = '600 13px Sora, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(options.text || 'No data in this period', (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
+                    ctx.restore();
+                }
+            };
+
+            Chart.register(visibleValueLabels, emptyState);
+
+            function pluginDefaults(extra) {
+                return Object.assign({
+                    legend: {
+                        labels: {
+                            color: '#314a63',
+                            padding: 14,
+                            boxWidth: 8,
+                            font: {
+                                size: 12,
+                                weight: '600'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        padding: 10,
+                        callbacks: {
+                            label(context) {
+                                const parsed = context.parsed;
+                                const value = typeof parsed === 'object' ? (parsed.y ?? parsed.x ?? 0) : parsed;
+                                const label = context.label || context.dataset.label || '';
+                                const unit = context.dataset.unit || '';
+                                return (label ? label + ': ' : '') + formatNumber(value, unit);
+                            }
+                        }
+                    },
+                    visibleValueLabels: {
+                        hideZero: true
+                    },
+                    emptyState: {
+                        text: 'No data in this period'
+                    }
+                }, extra || {});
+            }
+
+            function axisStyle(maxTicksLimit) {
+                return {
+                    ticks: {
+                        color: '#314a63',
+                        precision: 0,
+                        autoSkip: true,
+                        maxTicksLimit: maxTicksLimit || 8,
+                        font: {
+                            size: 11,
+                            weight: '600'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(49, 74, 99, 0.14)',
+                        drawBorder: false
+                    }
+                };
+            }
+
+            function chartOptions(overrides) {
+                const custom = overrides || {};
+                const options = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 24,
+                            right: 16,
+                            bottom: 0,
+                            left: 6
+                        }
+                    },
+                    plugins: pluginDefaults(),
+                    scales: {
+                        x: axisStyle(),
+                        y: Object.assign(axisStyle(), {
+                            beginAtZero: true
+                        })
+                    }
+                };
+
+                if (custom.scales === false) {
+                    delete options.scales;
+                } else if (custom.scales) {
+                    options.scales = custom.scales;
+                }
+
+                if (custom.plugins) {
+                    options.plugins = pluginDefaults(custom.plugins);
+                }
+
+                delete custom.scales;
+                delete custom.plugins;
+
+                return Object.assign(options, custom);
+            }
+
+            function renderSummary(id, data, options) {
+                const container = document.getElementById(id);
+                if (!container || !data) return;
+
+                const settings = options || {};
+                const labels = data.labels || [];
+                const values = data.values || [];
+                const hasData = values.some((item) => Number(item) > 0);
+
+                container.textContent = '';
+
+                if (!hasData) {
+                    const empty = document.createElement('span');
+                    empty.className = 'chart-summary-empty';
+                    empty.textContent = settings.emptyText || 'No data recorded';
+                    container.appendChild(empty);
+                    return;
+                }
+
+                labels.forEach((label, index) => {
+                    const item = document.createElement('span');
+                    item.className = 'chart-summary-item';
+
+                    const labelEl = document.createElement('span');
+                    labelEl.textContent = label;
+
+                    const valueEl = document.createElement('strong');
+                    valueEl.textContent = formatNumber(values[index] || 0, settings.unit || '');
+
+                    item.appendChild(labelEl);
+                    item.appendChild(valueEl);
+                    container.appendChild(item);
+                });
+            }
 
             function makeChart(id, config) {
                 const el = document.getElementById(id);
@@ -679,17 +933,43 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     datasets: [{
                         label: 'Guest requests',
                         data: charts.guestDaily.values,
-                        borderColor: '#0d3b6f',
-                        backgroundColor: 'rgba(13, 59, 111, 0.14)',
+                        borderColor: palette.teal,
+                        backgroundColor: 'rgba(14, 159, 138, 0.16)',
+                        pointBackgroundColor: palette.teal,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
                         fill: true,
                         tension: 0.32
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                options: chartOptions({
+                    plugins: {
+                        emptyState: {
+                            text: 'No guest requests in this period'
+                        }
+                    }
+                })
+            });
+
+            makeChart('guestExpiryChart', {
+                type: 'bar',
+                data: {
+                    labels: charts.guestExpiry.labels,
+                    datasets: [{
+                        label: 'Accounts expiring',
+                        data: charts.guestExpiry.values,
+                        backgroundColor: palette.amber,
+                        borderRadius: 8
+                    }]
+                },
+                options: chartOptions({
+                    plugins: {
+                        emptyState: {
+                            text: 'No accounts expire in this period'
+                        }
+                    }
+                })
             });
 
             makeChart('guestStatusChart', {
@@ -698,15 +978,19 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     labels: charts.guestStatus.labels,
                     datasets: [{
                         data: charts.guestStatus.values,
-                        backgroundColor: ['#0d3b6f', '#9eb5cc'],
+                        backgroundColor: [palette.teal, palette.red],
                         borderWidth: 0
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                options: chartOptions({
+                    scales: false,
+                    cutout: '62%',
+                    plugins: {
+                        visibleValueLabels: {
+                            hideZero: true
+                        }
+                    }
+                })
             });
 
             makeChart('authDailyChart', {
@@ -716,15 +1000,17 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     datasets: [{
                         label: 'Auth attempts',
                         data: charts.authDaily.values,
-                        backgroundColor: '#1f5d9b',
+                        backgroundColor: palette.blue,
                         borderRadius: 8
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                options: chartOptions({
+                    plugins: {
+                        emptyState: {
+                            text: 'No radpostauth records yet'
+                        }
+                    }
+                })
             });
 
             makeChart('sessionHourlyChart', {
@@ -734,17 +1020,29 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     datasets: [{
                         label: 'Sessions',
                         data: charts.sessionHourly.values,
-                        borderColor: '#4c7bb0',
-                        backgroundColor: 'rgba(76, 123, 176, 0.14)',
+                        borderColor: palette.purple,
+                        backgroundColor: 'rgba(124, 58, 237, 0.14)',
+                        pointBackgroundColor: palette.purple,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 3,
                         fill: true,
                         tension: 0.3
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                options: chartOptions({
+                    scales: {
+                        x: axisStyle(12),
+                        y: Object.assign(axisStyle(), {
+                            beginAtZero: true
+                        })
+                    },
+                    plugins: {
+                        emptyState: {
+                            text: 'No radacct session records yet'
+                        }
+                    }
+                })
             });
 
             makeChart('systemCapacityChart', {
@@ -753,17 +1051,21 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     labels: charts.systemCapacity.labels,
                     datasets: [{
                         label: 'GB',
+                        unit: 'GB',
                         data: charts.systemCapacity.values,
-                        backgroundColor: ['#0d3b6f', '#6f9dcb', '#163f67', '#9eb5cc'],
+                        backgroundColor: [palette.blue, palette.teal, palette.purple, palette.amber],
                         borderRadius: 8
                     }]
                 },
-                options: {
+                options: chartOptions({
                     indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                    scales: {
+                        x: Object.assign(axisStyle(), {
+                            beginAtZero: true
+                        }),
+                        y: axisStyle(4)
+                    }
+                })
             });
 
             makeChart('authReplyChart', {
@@ -772,15 +1074,18 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     labels: charts.authReply.labels,
                     datasets: [{
                         data: charts.authReply.values,
-                        backgroundColor: ['#0d3b6f', '#1f5d9b', '#9eb5cc', '#d4e1ee', '#4c7bb0'],
+                        backgroundColor: [palette.teal, palette.red, palette.amber, palette.purple, palette.slate, palette.sky],
                         borderWidth: 0
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                options: chartOptions({
+                    scales: false,
+                    plugins: {
+                        emptyState: {
+                            text: 'No radpostauth outcomes yet'
+                        }
+                    }
+                })
             });
 
             makeChart('topNasChart', {
@@ -790,15 +1095,49 @@ require_once dirname(__DIR__) . '/includes/guest_accounts.php';
                     datasets: [{
                         label: 'Sessions',
                         data: charts.topNas.values,
-                        backgroundColor: '#0d3b6f',
+                        backgroundColor: palette.navy,
                         borderRadius: 8
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: chartDefaults
-                }
+                options: chartOptions({
+                    indexAxis: 'y',
+                    scales: {
+                        x: Object.assign(axisStyle(), {
+                            beginAtZero: true
+                        }),
+                        y: axisStyle(5)
+                    },
+                    plugins: {
+                        emptyState: {
+                            text: 'No radacct NAS records yet'
+                        }
+                    }
+                })
+            });
+
+            renderSummary('guestDailySummary', charts.guestDaily, {
+                emptyText: 'No guest requests in the last 14 days'
+            });
+            renderSummary('guestExpirySummary', charts.guestExpiry, {
+                emptyText: 'No accounts expire in the next 14 days'
+            });
+            renderSummary('guestStatusSummary', charts.guestStatus, {
+                emptyText: 'No guest account lifecycle data'
+            });
+            renderSummary('authDailySummary', charts.authDaily, {
+                emptyText: 'No radpostauth records yet'
+            });
+            renderSummary('sessionHourlySummary', charts.sessionHourly, {
+                emptyText: 'No radacct session records yet'
+            });
+            renderSummary('systemCapacitySummary', charts.systemCapacity, {
+                unit: 'GB'
+            });
+            renderSummary('authReplySummary', charts.authReply, {
+                emptyText: 'No radpostauth outcomes yet'
+            });
+            renderSummary('topNasSummary', charts.topNas, {
+                emptyText: 'No radacct NAS records yet'
             });
         })();
     </script>

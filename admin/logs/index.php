@@ -1,6 +1,8 @@
 <?php
 // Start the session if not already started
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Check if 'basic_auth' session variable is set
 if(!isset($_SESSION['basic_auth']) || empty($_SESSION['basic_auth'])) {
@@ -26,7 +28,7 @@ if ($_SERVER['PHP_AUTH_USER'] !== $authUser || $_SERVER['PHP_AUTH_PW'] !== $auth
 }
 
 // Include the config.php file
-require_once '../../includes/config.php';
+require_once dirname(__DIR__, 2) . '/includes/config.php';
 
 ?>
 <!DOCTYPE html>
@@ -36,24 +38,123 @@ require_once '../../includes/config.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_name; ?> Management</title>
     <link rel="stylesheet" href="/eduroam/assets/css/styles.css">
-    <?php include '../../template_parts/head.php'; ?>
+    <?php include dirname(__DIR__, 2) . '/template_parts/head.php'; ?>
 </head>
 <body class="app-shell">
-    <?php include '../../template_parts/nav.php'; ?>
+    <?php include dirname(__DIR__, 2) . '/template_parts/nav.php'; ?>
     <main id="content" class="page-shell">
-        <?php 
-        // get current date and time
-        $dateTime = date("F j, Y, g:i a");
-        echo "<div class='hero-banner'><div><span class='eyebrow'>Admin Logs</span><h1>Recent Logs</h1><p class='meta mb-0'>Current server time: " . htmlspecialchars($dateTime) . "</p></div></div>";
-        ?>
-<?php
-            echo "<section class='table-card'>";
-            include '../../log.php';
-            echo "</section>";
-        ?>
+        <?php $dateTime = date("F j, Y, g:i a"); ?>
+        <div class="hero-banner">
+            <div>
+                <span class="eyebrow">Admin Logs</span>
+                <h1>Recent Logs</h1>
+                <p class="meta mb-0">Current server time: <?php echo htmlspecialchars($dateTime); ?></p>
+            </div>
+            <div class="hero-actions">
+                <a href="/eduroam/admin/analytics/" class="btn btn-outline-light">
+                    <i class="fas fa-chart-line me-2"></i>Analytics
+                </a>
+            </div>
+        </div>
+
+        <section class="table-card logs-card">
+            <div class="logs-toolbar">
+                <div>
+                    <span class="chart-eyebrow">FreeRADIUS</span>
+                    <h2>Latest Log Entries</h2>
+                </div>
+                <div class="logs-actions">
+                    <label class="log-follow-toggle" for="logFollowLatest">
+                        <input type="checkbox" id="logFollowLatest" checked>
+                        <span>Follow latest</span>
+                    </label>
+                    <button type="button" class="btn btn-outline-secondary" id="logJumpBottom">
+                        <i class="fas fa-arrow-down me-2"></i>Latest
+                    </button>
+                    <button type="button" class="btn btn-primary" id="logRefresh">
+                        <i class="fas fa-rotate me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+            <?php include dirname(__DIR__, 2) . '/log.php'; ?>
+        </section>
         </main>
 
-    <?php include '../../template_parts/footer.php'; ?>
+    <?php include dirname(__DIR__, 2) . '/template_parts/footer.php'; ?>
+    <script>
+        (function () {
+            const viewer = document.getElementById('logContent');
+            const followToggle = document.getElementById('logFollowLatest');
+            const jumpButton = document.getElementById('logJumpBottom');
+            const refreshButton = document.getElementById('logRefresh');
+            const scrollKey = 'eduroamAdminLogScrollTop';
+            const followKey = 'eduroamAdminLogFollowLatest';
+
+            if (!viewer || !followToggle) return;
+
+            const savedFollow = sessionStorage.getItem(followKey);
+            followToggle.checked = savedFollow === null ? true : savedFollow === '1';
+
+            function isNearBottom() {
+                return viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight < 32;
+            }
+
+            function savePosition() {
+                sessionStorage.setItem(scrollKey, String(viewer.scrollTop));
+                sessionStorage.setItem(followKey, followToggle.checked ? '1' : '0');
+            }
+
+            function scrollToBottom() {
+                viewer.scrollTop = viewer.scrollHeight;
+                savePosition();
+            }
+
+            window.requestAnimationFrame(function () {
+                if (followToggle.checked) {
+                    scrollToBottom();
+                    return;
+                }
+
+                const savedScroll = Number(sessionStorage.getItem(scrollKey));
+                if (Number.isFinite(savedScroll)) {
+                    viewer.scrollTop = savedScroll;
+                }
+            });
+
+            viewer.addEventListener('scroll', function () {
+                if (!isNearBottom()) {
+                    followToggle.checked = false;
+                }
+
+                savePosition();
+            });
+
+            followToggle.addEventListener('change', function () {
+                if (followToggle.checked) {
+                    scrollToBottom();
+                    return;
+                }
+
+                savePosition();
+            });
+
+            if (jumpButton) {
+                jumpButton.addEventListener('click', function () {
+                    followToggle.checked = true;
+                    scrollToBottom();
+                });
+            }
+
+            if (refreshButton) {
+                refreshButton.addEventListener('click', function () {
+                    savePosition();
+                    window.location.reload();
+                });
+            }
+
+            window.addEventListener('beforeunload', savePosition);
+        })();
+    </script>
 
 </body>
 </html>

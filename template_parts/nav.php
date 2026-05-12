@@ -23,6 +23,12 @@
                     <a class="nav-link" href="/eduroam/admin/">Dashboard</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="/eduroam/admin/users/">Users</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/eduroam/admin/analytics/">Analytics</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="/eduroam/admin/nas">NAS</a>
                 </li>
                 <li class="nav-item">
