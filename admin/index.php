@@ -141,7 +141,7 @@ if (isset($_GET['search'])) {
     $page = isset($_GET['page']) && is_numeric($_GET['page']) ? $_GET['page'] : 1;
     $offset = ($page - 1) * $records_per_page;
 
-    $query = "SELECT userinfo.username, userinfo.fullname, userinfo.email, radcheck.value, userinfo.updateby, userinfo.updatedate FROM userinfo INNER JOIN radcheck ON userinfo.username = radcheck.username WHERE userinfo.username LIKE :filtervalues OR userinfo.fullname LIKE :filtervalues";
+    $query = "SELECT userinfo.username, userinfo.fullname, userinfo.email, userinfo.updateby, userinfo.updatedate FROM userinfo WHERE userinfo.username LIKE :filtervalues OR userinfo.fullname LIKE :filtervalues";
     $filtervalues = "%" . $filtervalues . "%";
 
     $stmt_count = $pdo->prepare($query);

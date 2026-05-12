@@ -55,19 +55,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body id="logindiv">
-    <div style="position: relative; width: 100vw; height: 100vh; margin: 0; padding: 0; overflow: hidden;">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://source.unsplash.com/1600x900/?education'); background-size: cover; background-position: center;"></div>
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6);"></div>
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"  id="login">
-            <h5 class="mt-4 mb-4 text-center"><?php echo $site_name; ?> Management</h5>
-            <!-- If alert in session, show Bootstrap warning alert -->
+    <div style="position: relative; width: 100vw; min-height: 100vh; margin: 0; padding: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0b1929 0%, #152F4F 100%);"></div>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.3);"></div>
+        <div style="position: relative; width: 100%; max-width: 420px; margin: 1rem; padding: 2rem; border-radius: 15px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);" id="login">
+            <h5 class="mt-2 mb-4 text-center"><?php echo $site_name; ?> Management</h5>
             <?php if (isset($_SESSION['alert']) && $_SESSION['alert']) : ?>
                 <div class="alert alert-warning" role="alert">
                     <?php echo $_SESSION['alert']; ?>
                 </div>
                 <?php unset($_SESSION['alert']); ?>
             <?php endif; ?>
-            <!-- Username and password form -->
             <form action="" method="POST">
                 <div class="mb-3">
                     <label for="username" class="form-label">Username</label>
@@ -77,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="password" class="form-label">Password</label>
                     <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Login</button>
+                <button type="submit" class="btn btn-primary w-100">Login</button>
             </form>
         </div>
     </div>

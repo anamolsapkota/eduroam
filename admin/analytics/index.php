@@ -55,7 +55,7 @@ $freeDiskBytes = (int) analyticsCommand("df -B1 / | awk 'NR==2 {print $4}'");
 $usedDiskBytes = (int) analyticsCommand("df -B1 / | awk 'NR==2 {print $3}'");
 
 // User stats (regular accounts, no guest/expiry)
-$totalUsers = (int) $pdo->query("SELECT COUNT(*) FROM userinfo u INNER JOIN radcheck r ON u.username = r.username")->fetchColumn();
+$totalUsers = (int) $pdo->query("SELECT COUNT(*) FROM userinfo")->fetchColumn();
 
 $userDailyStmt = $pdo->query("SELECT DATE(updatedate) AS period, COUNT(*) AS count FROM userinfo WHERE updatedate >= NOW() - INTERVAL 14 DAY GROUP BY DATE(updatedate) ORDER BY DATE(updatedate)");
 $userDailyChart = analyticsDailySeries($userDailyStmt->fetchAll(PDO::FETCH_ASSOC), 14);

@@ -277,7 +277,7 @@ $fullPayload = [
             margin-bottom: 1.5rem;
         }
         .monitoring-grid .chart-card canvas {
-            height: 380px !important;
+            max-height: 350px;
         }
         @media (max-width: 767.98px) {
             .range-tabs {
@@ -535,6 +535,9 @@ $fullPayload = [
         Chart.defaults.font.weight = '500';
         Chart.defaults.plugins.legend.labels.usePointStyle = true;
         Chart.defaults.plugins.legend.labels.padding = 16;
+        Chart.defaults.animation = { duration: 400 };
+        Chart.defaults.datasets.line.pointRadius = 2;
+        Chart.defaults.datasets.line.pointHoverRadius = 4;
 
         var palette = {
             green: '#10b981',
@@ -658,7 +661,7 @@ $fullPayload = [
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { labels: { usePointStyle: true, padding: 16 } },
@@ -723,7 +726,7 @@ $fullPayload = [
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { labels: { usePointStyle: true, padding: 16 } },
@@ -820,7 +823,7 @@ $fullPayload = [
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { labels: { usePointStyle: true, padding: 16 } },
@@ -898,7 +901,7 @@ $fullPayload = [
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
                     cutout: '58%',
                     plugins: {
                         legend: {

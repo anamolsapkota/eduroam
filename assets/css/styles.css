@@ -10,13 +10,13 @@
 }
 
 #login {
-    min-width: 300px;
-    max-width: 500px;
-    padding: 50px;
+    width: 100%;
+    max-width: 420px;
+    padding: 2rem;
     border-radius: 15px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(100px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 /* Styling for form inputs */

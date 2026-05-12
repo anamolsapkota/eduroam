@@ -209,12 +209,7 @@ include dirname(__DIR__) . '/includes/admin-shell-header.php';
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong><i class="fas fa-lock"></i> Password:</strong>
-                        <p class="ms-4">
-                            <code id="um_viewPassword">********</code>
-                            <button class="btn btn-sm btn-outline-secondary ms-2" style="visibility: hidden;">
-                                <i class="fas fa-eye" id="um_viewPasswordIcon"></i>
-                            </button>
-                        </p>
+                        <p class="ms-4"><code>••••••••</code></p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong><i class="fas fa-calendar"></i> Updated Date:</strong>
@@ -243,8 +238,6 @@ include dirname(__DIR__) . '/includes/admin-shell-header.php';
     let um_currentLimit = 10;
     let um_currentSearch = '';
     let um_deleteTargetUsername = '';
-    let um_viewPasswordShown = false;
-    let um_actualPassword = '';
 
     document.addEventListener('DOMContentLoaded', function () {
         um_loadUsers();
@@ -474,10 +467,6 @@ include dirname(__DIR__) . '/includes/admin-shell-header.php';
                     document.getElementById('um_viewUsername').textContent = user.username;
                     document.getElementById('um_viewFullname').textContent = user.fullname;
                     document.getElementById('um_viewEmail').textContent = user.email;
-                    document.getElementById('um_viewPassword').textContent = '••••••••';
-                    um_actualPassword = user.password || '(not set)';
-                    um_viewPasswordShown = false;
-                    document.getElementById('um_viewPasswordIcon').className = 'fas fa-eye';
                     document.getElementById('um_viewUpdatedate').textContent = um_formatDate(user.updatedate);
                     document.getElementById('um_viewUpdateby').textContent = user.updateby;
 
@@ -608,23 +597,6 @@ include dirname(__DIR__) . '/includes/admin-shell-header.php';
             input.type = 'password';
             icon.classList.remove('fa-eye-slash');
             icon.classList.add('fa-eye');
-        }
-    }
-
-    function um_toggleViewPassword() {
-        const passwordEl = document.getElementById('um_viewPassword');
-        const icon = document.getElementById('um_viewPasswordIcon');
-
-        if (um_viewPasswordShown) {
-            passwordEl.textContent = '••••••••';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-            um_viewPasswordShown = false;
-        } else {
-            passwordEl.textContent = um_actualPassword;
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-            um_viewPasswordShown = true;
         }
     }
 

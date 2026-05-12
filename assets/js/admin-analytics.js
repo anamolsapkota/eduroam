@@ -8,6 +8,9 @@
     Chart.defaults.font.weight = '500';
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
     Chart.defaults.plugins.legend.labels.padding = 16;
+    Chart.defaults.animation = { duration: 400 };
+    Chart.defaults.datasets.line.pointRadius = 2;
+    Chart.defaults.datasets.line.pointHoverRadius = 4;
 
     var palette = {
         blue: '#3b82f6',
@@ -81,7 +84,7 @@
                 }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: true,
                 plugins: { tooltip: professionalTooltip() },
                 scales: { x: { grid: gridStyle(), ticks: tickStyle(7) }, y: { beginAtZero: true, grid: gridStyle(), ticks: Object.assign(tickStyle(), { precision: 0 }) } },
             },
@@ -107,7 +110,7 @@
                 }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: true,
                 plugins: { tooltip: professionalTooltip() },
                 scales: { x: { grid: gridStyle(), ticks: tickStyle(7) }, y: { beginAtZero: true, grid: gridStyle(), ticks: Object.assign(tickStyle(), { precision: 0 }) } },
             },
@@ -140,7 +143,7 @@
                 }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: true,
                 plugins: { tooltip: professionalTooltip() },
                 scales: { x: { grid: gridStyle(), ticks: tickStyle(12) }, y: { beginAtZero: true, grid: gridStyle(), ticks: Object.assign(tickStyle(), { precision: 0 }) } },
             },
@@ -167,7 +170,7 @@
             },
             options: {
                 indexAxis: 'y',
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: true,
                 plugins: {
                     legend: { display: false },
                     tooltip: professionalTooltip({ label: function (ctx) { return ' ' + ctx.label + ': ' + ctx.parsed.x.toFixed(2) + ' GB'; } }),
@@ -193,7 +196,7 @@
                 datasets: [{ data: ar.values, backgroundColor: colors.slice(0, ar.labels.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false, cutout: '58%',
+                responsive: true, maintainAspectRatio: true, cutout: '58%',
                 plugins: {
                     legend: { position: 'right', labels: { usePointStyle: true, padding: 16, font: { size: 12, weight: '600' } } },
                     tooltip: professionalTooltip({
@@ -219,7 +222,7 @@
             },
             options: {
                 indexAxis: 'y',
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: true,
                 plugins: { legend: { display: false }, tooltip: professionalTooltip() },
                 scales: {
                     x: { beginAtZero: true, grid: gridStyle(), ticks: Object.assign(tickStyle(), { precision: 0 }) },

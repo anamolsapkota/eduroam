@@ -312,9 +312,8 @@ function um_getUser()
             return;
         }
 
-        $selectQuery = "SELECT u.*, r.value as password
+        $selectQuery = "SELECT u.*
                        FROM userinfo u
-                       LEFT JOIN radcheck r ON u.username = r.username AND r.attribute = 'Cleartext-Password'
                        WHERE u.username = :username";
         $stmt = $pdo->prepare($selectQuery);
         $stmt->bindParam(':username', $username);
@@ -361,9 +360,8 @@ function um_listUsers()
         $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
         // Users
-        $selectQuery = "SELECT u.*, r.value as password
+        $selectQuery = "SELECT u.*
                        FROM userinfo u
-                       LEFT JOIN radcheck r ON u.username = r.username AND r.attribute = 'Cleartext-Password'
                        $whereClause
                        ORDER BY u.updatedate DESC
                        LIMIT :limit OFFSET :offset";
