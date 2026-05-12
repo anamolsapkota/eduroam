@@ -8,6 +8,10 @@ if(!isset($_SESSION['basic_auth']) || empty($_SESSION['basic_auth'])) {
     exit;
 }
 
+// Redirect to new admin dashboard
+header('Location: /eduroam/admin/');
+exit;
+
 // Get basic auth from session
 $basic_auth = base64_decode($_SESSION['basic_auth']);
 $authUser = explode(':', $basic_auth)[0];

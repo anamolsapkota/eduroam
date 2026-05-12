@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-light pt-3 pb-3" id="navbar">
     <div class="container">
         <!-- Brand/Logo -->
-        <a class="navbar-brand fw-bold" href="/eduroam/management.php">
+        <a class="navbar-brand fw-bold" href="/eduroam/admin/">
             <?php echo $site_name; ?> Management
         </a>
 
@@ -20,13 +20,13 @@
                         <a class="nav-link" href="/eduroam/admin/users">Users</a>
                     </li> -->
                 <li class="nav-item">
-                    <a class="nav-link" href="/eduroam/management.php">Dashboard</a>
+                    <a class="nav-link" href="/eduroam/admin/">Dashboard</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/eduroam/admin/nas">NAS</a>
+                    <a class="nav-link" href="/eduroam/admin/nas/">NAS</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/eduroam/admin/logs">Logs</a>
+                    <a class="nav-link" href="/eduroam/admin/logs/">Logs</a>
                 </li>
                 <?php endif; ?>
                 <!-- <li class="nav-item">
