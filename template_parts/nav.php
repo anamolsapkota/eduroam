@@ -1,8 +1,8 @@
 <nav class="navbar navbar-expand-lg navbar-light pt-3 pb-3" id="navbar">
     <div class="container">
         <!-- Brand/Logo -->
-        <a class="navbar-brand fw-bold" href="/eduroam/admin/">
-            <?php echo $site_name; ?> Management
+        <a class="navbar-brand fw-bold" href="/eduroam/">
+            <?php echo $site_name; ?>
         </a>
 
         <!-- Mobile Toggle Button -->
@@ -75,13 +75,6 @@
                             </li>
                         </ul>
                     </li>
-                </div>
-            <?php else : ?>
-                <!-- Login Button for Non-Authenticated Users -->
-                <div class="navbar-nav ms-auto">
-                    <a class="nav-link btn btn-outline-primary px-3" href="/eduroam/login.php">
-                        <i class="fas fa-sign-in-alt me-2"></i>Login
-                    </a>
                 </div>
             <?php endif; ?>
         </div>
