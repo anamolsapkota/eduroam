@@ -1,7 +1,7 @@
 <?php
 // Radius monitoring constants
 define('RADIUS_MONITOR_LOG_PATH', '/var/log/freeradius/radius.log');
-define('RADIUS_MONITOR_STATS_PATH', '/tmp/eduroam_radius_auth_stats.csv');
+define('RADIUS_MONITOR_STATS_PATH', dirname(__DIR__) . '/stats/radius_auth_stats.csv');
 
 function radiusMonitorReadStats() {
     $path = RADIUS_MONITOR_STATS_PATH;
@@ -48,6 +48,10 @@ function radiusMonitorCollectSnapshot() {
 
 function radiusMonitorAppendSnapshot($snapshot) {
     $path = RADIUS_MONITOR_STATS_PATH;
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
     $handle = fopen($path, 'a');
     if ($handle) {
         fputcsv($handle, [$snapshot['timestamp'], $snapshot['accepts'], $snapshot['rejects'], $snapshot['invalids']]);
