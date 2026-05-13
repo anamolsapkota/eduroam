@@ -90,12 +90,12 @@ function adm_updateAdmin()
     global $pdo;
 
     try {
-        $id = intval($_POST['id'] ?? 0);
+        $username = trim($_POST['username'] ?? '');
         $fullname = trim($_POST['fullname'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = trim($_POST['password'] ?? '');
 
-        if ($id <= 0 || $fullname === '' || $email === '') {
+        if ($username === '' || $fullname === '' || $email === '') {
             echo json_encode(['status' => 'error', 'message' => 'Full name and email are required']);
             return;
         }
@@ -106,14 +106,14 @@ function adm_updateAdmin()
         }
 
         $fields = 'fullname = :fullname, email = :email';
-        $params = [':fullname' => $fullname, ':email' => $email, ':id' => $id];
+        $params = [':fullname' => $fullname, ':email' => $email, ':username' => $username];
 
         if ($password !== '') {
             $fields .= ', password = :password';
             $params[':password'] = sha1($password);
         }
 
-        $stmt = $pdo->prepare("UPDATE rmadmin SET $fields WHERE id = :id");
+        $stmt = $pdo->prepare("UPDATE rmadmin SET $fields WHERE username = :username");
         $stmt->execute($params);
 
         if ($stmt->rowCount() === 0) {
@@ -122,7 +122,7 @@ function adm_updateAdmin()
         }
 
         // Update session if editing self
-        if (isset($_SESSION['user']['id']) && (int) $_SESSION['user']['id'] === $id) {
+        if (isset($_SESSION['user']['username']) && $_SESSION['user']['username'] === $username) {
             $_SESSION['user']['fullname'] = $fullname;
             $_SESSION['user']['email'] = $email;
         }
@@ -140,15 +140,15 @@ function adm_deleteAdmin()
     global $pdo;
 
     try {
-        $id = intval($_POST['id'] ?? 0);
+        $username = trim($_POST['username'] ?? '');
 
-        if ($id <= 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Admin ID is required']);
+        if ($username === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Username is required']);
             return;
         }
 
         // Prevent deleting self
-        if (isset($_SESSION['user']['id']) && (int) $_SESSION['user']['id'] === $id) {
+        if (isset($_SESSION['user']['username']) && $_SESSION['user']['username'] === $username) {
             echo json_encode(['status' => 'error', 'message' => 'Cannot delete your own account']);
             return;
         }
@@ -165,8 +165,8 @@ function adm_deleteAdmin()
             return;
         }
 
-        $stmt = $pdo->prepare("DELETE FROM rmadmin WHERE id = :id");
-        $stmt->execute([':id' => $id]);
+        $stmt = $pdo->prepare("DELETE FROM rmadmin WHERE username = :username");
+        $stmt->execute([':username' => $username]);
 
         if ($stmt->rowCount() > 0) {
             $pdo->commit();
@@ -190,15 +190,15 @@ function adm_getAdmin()
     global $pdo;
 
     try {
-        $id = intval($_POST['id'] ?? 0);
+        $username = trim($_POST['username'] ?? '');
 
-        if ($id <= 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Admin ID is required']);
+        if ($username === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Username is required']);
             return;
         }
 
-        $stmt = $pdo->prepare("SELECT id, username, fullname, email FROM rmadmin WHERE id = :id");
-        $stmt->execute([':id' => $id]);
+        $stmt = $pdo->prepare("SELECT username, fullname, email FROM rmadmin WHERE username = :username");
+        $stmt->execute([':username' => $username]);
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($admin) {
@@ -237,7 +237,7 @@ function adm_listAdmins()
         $countStmt->execute($params);
         $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-        $selectStmt = $pdo->prepare("SELECT id, username, fullname, email FROM rmadmin $whereClause ORDER BY id ASC LIMIT :limit OFFSET :offset");
+        $selectStmt = $pdo->prepare("SELECT username, fullname, email FROM rmadmin $whereClause ORDER BY username ASC LIMIT :limit OFFSET :offset");
         foreach ($params as $key => $value) {
             $selectStmt->bindValue($key, $value);
         }

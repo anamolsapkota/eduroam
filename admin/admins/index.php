@@ -1,7 +1,7 @@
 <?php
 $admin_page_title = 'Administrators';
 include dirname(__DIR__) . '/includes/admin-shell-header.php';
-$currentAdminId = $_SESSION['user']['id'] ?? 0;
+$currentAdminUsername = $_SESSION['user']['username'] ?? '';
 ?>
 
 <div class="admin-page-header">
@@ -57,8 +57,6 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
             </div>
             <div class="modal-body">
                 <form id="adm_form">
-                    <input type="hidden" id="adm_editId" name="id">
-
                     <div class="mb-3">
                         <label for="adm_username" class="form-label form-label-professional">
                             Username <span class="text-danger">*</span>
@@ -178,8 +176,8 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
 <script>
     var adm_currentPage = 1;
     var adm_isEdit = false;
-    var adm_deleteId = null;
-    var adm_currentAdminId = <?php echo (int) $currentAdminId; ?>;
+    var adm_deleteUsername = null;
+    var adm_currentAdminUsername = <?php echo json_encode($currentAdminUsername); ?>;
 
     document.addEventListener('DOMContentLoaded', function () {
         adm_refreshTable();
@@ -214,11 +212,12 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
                     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No administrators found</td></tr>';
                 } else {
                     tbody.innerHTML = data.data.map(function (admin) {
-                        var isSelf = parseInt(admin.id) === adm_currentAdminId;
+                        var isSelf = admin.username === adm_currentAdminUsername;
                         var badge = isSelf ? ' <span class="badge bg-primary">You</span>' : '';
+                        var escapedUsername = admin.username.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                         var deleteBtn = isSelf
                             ? '<button class="btn btn-outline-danger btn-sm" disabled title="Cannot delete yourself"><i class="fas fa-trash"></i></button>'
-                            : '<button class="btn btn-outline-danger btn-sm" onclick="adm_openDelete(' + admin.id + ', \'' + admin.username.replace(/'/g, "\\'") + '\')"><i class="fas fa-trash"></i></button>';
+                            : '<button class="btn btn-outline-danger btn-sm" onclick="adm_openDelete(\'' + escapedUsername + '\')"><i class="fas fa-trash"></i></button>';
 
                         return '<tr>' +
                             '<td>' + adm_esc(admin.username) + badge + '</td>' +
@@ -226,8 +225,8 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
                             '<td>' + adm_esc(admin.email) + '</td>' +
                             '<td>' +
                                 '<div class="btn-group btn-group-sm">' +
-                                    '<button class="btn btn-outline-primary btn-sm" onclick="adm_viewAdmin(' + admin.id + ')"><i class="fas fa-eye"></i></button>' +
-                                    '<button class="btn btn-outline-secondary btn-sm" onclick="adm_openEdit(' + admin.id + ')"><i class="fas fa-edit"></i></button>' +
+                                    '<button class="btn btn-outline-primary btn-sm" onclick="adm_viewAdmin(\'' + escapedUsername + '\')"><i class="fas fa-eye"></i></button>' +
+                                    '<button class="btn btn-outline-secondary btn-sm" onclick="adm_openEdit(\'' + escapedUsername + '\')"><i class="fas fa-edit"></i></button>' +
                                     deleteBtn +
                                 '</div>' +
                             '</td>' +
@@ -263,7 +262,6 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
         document.getElementById('adm_modalLabel').innerHTML = '<i class="fas fa-user-shield"></i> Add New Admin';
         document.getElementById('adm_saveText').textContent = 'Save Admin';
         document.getElementById('adm_form').reset();
-        document.getElementById('adm_editId').value = '';
         document.getElementById('adm_username').disabled = false;
         document.getElementById('adm_password').required = true;
         document.getElementById('adm_passwordRequired').style.display = '';
@@ -271,11 +269,11 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
         new bootstrap.Modal(document.getElementById('adm_modal')).show();
     }
 
-    function adm_openEdit(id) {
+    function adm_openEdit(username) {
         adm_isEdit = true;
         var formData = new FormData();
         formData.append('action', 'get');
-        formData.append('id', id);
+        formData.append('username', username);
 
         fetch('api.php', { method: 'POST', body: formData })
             .then(function (r) { return r.json(); })
@@ -284,7 +282,6 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
                     var admin = data.data;
                     document.getElementById('adm_modalLabel').innerHTML = '<i class="fas fa-user-edit"></i> Edit Admin';
                     document.getElementById('adm_saveText').textContent = 'Update Admin';
-                    document.getElementById('adm_editId').value = admin.id;
                     document.getElementById('adm_username').value = admin.username;
                     document.getElementById('adm_username').disabled = true;
                     document.getElementById('adm_fullname').value = admin.fullname;
@@ -306,7 +303,6 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
 
         if (adm_isEdit) {
             formData.append('action', 'update');
-            formData.append('id', document.getElementById('adm_editId').value);
         } else {
             formData.append('action', 'create');
         }
@@ -335,8 +331,8 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
             });
     }
 
-    function adm_openDelete(id, username) {
-        adm_deleteId = id;
+    function adm_openDelete(username) {
+        adm_deleteUsername = username;
         document.getElementById('adm_deleteUsername').textContent = username;
         new bootstrap.Modal(document.getElementById('adm_deleteModal')).show();
     }
@@ -344,7 +340,7 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
     function adm_confirmDelete() {
         var formData = new FormData();
         formData.append('action', 'delete');
-        formData.append('id', adm_deleteId);
+        formData.append('username', adm_deleteUsername);
 
         fetch('api.php', { method: 'POST', body: formData })
             .then(function (r) { return r.json(); })
@@ -358,10 +354,10 @@ $currentAdminId = $_SESSION['user']['id'] ?? 0;
             });
     }
 
-    function adm_viewAdmin(id) {
+    function adm_viewAdmin(username) {
         var formData = new FormData();
         formData.append('action', 'get');
-        formData.append('id', id);
+        formData.append('username', username);
 
         fetch('api.php', { method: 'POST', body: formData })
             .then(function (r) { return r.json(); })
