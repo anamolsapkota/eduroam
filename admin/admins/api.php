@@ -105,18 +105,21 @@ function adm_updateAdmin()
             return;
         }
 
-        $pdo->beginTransaction();
-
-        $stmt = $pdo->prepare("UPDATE rmadmin SET fullname = :fullname, email = :email WHERE id = :id");
-        $stmt->execute([':fullname' => $fullname, ':email' => $email, ':id' => $id]);
+        $fields = 'fullname = :fullname, email = :email';
+        $params = [':fullname' => $fullname, ':email' => $email, ':id' => $id];
 
         if ($password !== '') {
-            $hashedPassword = sha1($password);
-            $stmt = $pdo->prepare("UPDATE rmadmin SET password = :password WHERE id = :id");
-            $stmt->execute([':password' => $hashedPassword, ':id' => $id]);
+            $fields .= ', password = :password';
+            $params[':password'] = sha1($password);
         }
 
-        $pdo->commit();
+        $stmt = $pdo->prepare("UPDATE rmadmin SET $fields WHERE id = :id");
+        $stmt->execute($params);
+
+        if ($stmt->rowCount() === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Admin not found']);
+            return;
+        }
 
         // Update session if editing self
         if (isset($_SESSION['user']['id']) && (int) $_SESSION['user']['id'] === $id) {
@@ -127,9 +130,6 @@ function adm_updateAdmin()
         echo json_encode(['status' => 'success', 'message' => 'Admin updated successfully']);
 
     } catch (PDOException $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         error_log("Database error in adm_updateAdmin: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => 'Database error occurred']);
     }
@@ -147,18 +147,21 @@ function adm_deleteAdmin()
             return;
         }
 
-        // Prevent deleting the last admin
-        $countStmt = $pdo->query("SELECT COUNT(*) FROM rmadmin");
-        $adminCount = (int) $countStmt->fetchColumn();
-
-        if ($adminCount <= 1) {
-            echo json_encode(['status' => 'error', 'message' => 'Cannot delete the last administrator']);
-            return;
-        }
-
         // Prevent deleting self
         if (isset($_SESSION['user']['id']) && (int) $_SESSION['user']['id'] === $id) {
             echo json_encode(['status' => 'error', 'message' => 'Cannot delete your own account']);
+            return;
+        }
+
+        $pdo->beginTransaction();
+
+        // Prevent deleting the last admin (locked read to avoid race condition)
+        $countStmt = $pdo->query("SELECT COUNT(*) FROM rmadmin FOR UPDATE");
+        $adminCount = (int) $countStmt->fetchColumn();
+
+        if ($adminCount <= 1) {
+            $pdo->rollBack();
+            echo json_encode(['status' => 'error', 'message' => 'Cannot delete the last administrator']);
             return;
         }
 
@@ -166,12 +169,17 @@ function adm_deleteAdmin()
         $stmt->execute([':id' => $id]);
 
         if ($stmt->rowCount() > 0) {
+            $pdo->commit();
             echo json_encode(['status' => 'success', 'message' => 'Admin deleted successfully']);
         } else {
+            $pdo->rollBack();
             echo json_encode(['status' => 'error', 'message' => 'Admin not found']);
         }
 
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log("Database error in adm_deleteAdmin: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => 'Database error occurred']);
     }
