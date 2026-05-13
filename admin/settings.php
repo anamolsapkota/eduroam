@@ -39,6 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'mail_username' => trim($_POST['mail_username'] ?? ''),
         'mail_password' => trim($_POST['mail_password'] ?? ''),
         'mail_send' => trim($_POST['mail_send'] ?? 'enable'),
+        'rclone_remote' => trim($_POST['rclone_remote'] ?? ''),
+        'rclone_drive_path' => trim($_POST['rclone_drive_path'] ?? ''),
+        'rclone_server_name' => trim($_POST['rclone_server_name'] ?? ''),
+        'rclone_backup_enabled' => trim($_POST['rclone_backup_enabled'] ?? 'disable'),
     ];
 
     if ($formData['site_name'] === '') {
@@ -73,6 +77,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $alerts[] = ['type' => 'danger', 'message' => 'Mail send must be enable or disable.'];
     }
 
+    if (!in_array($formData['rclone_backup_enabled'], ['enable', 'disable'], true)) {
+        $alerts[] = ['type' => 'danger', 'message' => 'Backup enabled must be enable or disable.'];
+    }
+
     if (empty($alerts)) {
         try {
             foreach ($formData as $key => $value) {
@@ -87,6 +95,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail_username = $formData['mail_username'];
             $mail_password = $formData['mail_password'];
             $mail_send = $formData['mail_send'];
+            $rclone_remote = $formData['rclone_remote'];
+            $rclone_drive_path = $formData['rclone_drive_path'];
+            $rclone_server_name = $formData['rclone_server_name'];
+            $rclone_backup_enabled = $formData['rclone_backup_enabled'];
 
             $alerts[] = ['type' => 'success', 'message' => 'Settings saved successfully.'];
         } catch (PDOException $e) {
@@ -118,6 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$rclone_remote = $rmsettings['rclone_remote'] ?? '';
+$rclone_drive_path = $rmsettings['rclone_drive_path'] ?? 'eduroam-logs';
+$rclone_server_name = $rmsettings['rclone_server_name'] ?? php_uname('n');
+$rclone_backup_enabled = $rmsettings['rclone_backup_enabled'] ?? 'disable';
 
 // Now include the shell header (config.php already loaded above, shell will skip duplicate)
 $admin_page_title = 'Settings';
@@ -208,6 +225,38 @@ if (!isset($_SESSION['user'])) {
                             <div class="mb-3">
                                 <label for="test_email_recipient" class="form-label">Test Email Recipient</label>
                                 <input type="email" class="form-control" id="test_email_recipient" name="test_email_recipient" value="<?php echo htmlspecialchars($test_email_recipient); ?>" placeholder="Enter an email address for SMTP testing">
+                            </div>
+
+                            <hr class="my-4">
+                            <h5 class="mb-3"><i class="fas fa-cloud-arrow-up me-2"></i>Google Drive Log Backup</h5>
+                            <p class="text-muted small mb-3">Automatically upload daily radius logs to Google Drive via rclone.</p>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="rclone_remote" class="form-label">Rclone Remote Name</label>
+                                    <input type="text" class="form-control" id="rclone_remote" name="rclone_remote" value="<?php echo htmlspecialchars($rclone_remote); ?>" placeholder="e.g. gdrive">
+                                    <small class="text-muted">The rclone remote configured on this server (run <code>rclone listremotes</code> to check)</small>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="rclone_backup_enabled" class="form-label">Backup Status</label>
+                                    <select class="form-select" id="rclone_backup_enabled" name="rclone_backup_enabled">
+                                        <option value="enable" <?php echo $rclone_backup_enabled === 'enable' ? 'selected' : ''; ?>>Enable</option>
+                                        <option value="disable" <?php echo $rclone_backup_enabled === 'disable' ? 'selected' : ''; ?>>Disable</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="rclone_drive_path" class="form-label">Drive Base Folder</label>
+                                <input type="text" class="form-control" id="rclone_drive_path" name="rclone_drive_path" value="<?php echo htmlspecialchars($rclone_drive_path); ?>" placeholder="e.g. eduroam-logs">
+                                <small class="text-muted">Folder path in Google Drive (created automatically if it doesn't exist)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="rclone_server_name" class="form-label">Server Identifier</label>
+                                <input type="text" class="form-control" id="rclone_server_name" name="rclone_server_name" value="<?php echo htmlspecialchars($rclone_server_name); ?>" placeholder="e.g. idp-nec.nren.net.np">
+                                <small class="text-muted">Used as subfolder name in Drive: <code>&lt;base-folder&gt;/&lt;server-name&gt;/radius-log-2026-05-13.log</code></small>
                             </div>
 
                             <div class="d-flex gap-2">
