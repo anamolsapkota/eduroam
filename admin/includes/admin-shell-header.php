@@ -113,6 +113,10 @@ $admin_page_title = $admin_page_title ?? 'Dashboard';
                     <i class="fas fa-file-lines"></i>
                     <span class="sidebar-nav-item-text">Logs</span>
                 </a>
+                <a href="/eduroam/admin/admins/" class="sidebar-nav-item<?php echo adminNavActive('/eduroam/admin/admins') ? ' active' : ''; ?>">
+                    <i class="fas fa-user-shield"></i>
+                    <span class="sidebar-nav-item-text">Admins</span>
+                </a>
                 <a href="/eduroam/admin/settings.php" class="sidebar-nav-item<?php echo adminNavActive('/eduroam/admin/settings') ? ' active' : ''; ?>">
                     <i class="fas fa-gear"></i>
                     <span class="sidebar-nav-item-text">Settings</span>
