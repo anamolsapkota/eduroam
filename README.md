@@ -35,6 +35,12 @@ To install and configure the Eduroam system, follow these steps:
     ```
     This collects FreeRADIUS authentication stats every 10 minutes and stores them as CSV samples for the monitoring charts.
 
+7. Set up the daily cron job for Google Drive log backup (optional, configure via Settings page first):
+    ```
+    55 23 * * * /usr/bin/php /var/www/yoursite/eduroam/scripts/backup_radius_log.php >/dev/null 2>&1
+    ```
+    This uploads the day's radius log to Google Drive via rclone at 23:55 each night.
+
 ## Usage
 
 Once the installation and configuration are complete, you can use the following URLs:
