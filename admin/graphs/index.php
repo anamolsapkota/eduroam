@@ -688,66 +688,75 @@ $fullPayload = [
         var authRangeCanvas = document.getElementById('authRangeChart');
         var authRangeChart = null;
         var authRangeData = payload.authByRange;
+        var authRangeCurrent = null;
 
         function buildAuthRange(range) {
             var d = authRangeData[range] || authRangeData['daily'];
-            if (authRangeChart) authRangeChart.destroy();
+            authRangeCurrent = d;
 
-            authRangeChart = new Chart(authRangeCanvas, {
-                type: 'bar',
-                data: {
-                    labels: d.labels,
-                    datasets: [
-                        {
-                            label: 'Accept',
-                            data: d.accepts,
-                            backgroundColor: palette.green,
-                            borderRadius: 4,
-                            barPercentage: 0.7,
-                            categoryPercentage: 0.8,
-                        },
-                        {
-                            label: 'Reject',
-                            data: d.rejects,
-                            backgroundColor: palette.red,
-                            borderRadius: 4,
-                            barPercentage: 0.7,
-                            categoryPercentage: 0.8,
-                        },
-                        {
-                            label: 'Other',
-                            data: d.other,
-                            backgroundColor: palette.amber,
-                            borderRadius: 4,
-                            barPercentage: 0.7,
-                            categoryPercentage: 0.8,
-                        },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { labels: { usePointStyle: true, padding: 16 } },
-                        tooltip: professionalTooltip({
-                            afterTitle: function (items) {
-                                var idx = items[0].dataIndex;
-                                return 'Total: ' + (d.total[idx] || 0).toLocaleString() + ' attempts';
+            if (authRangeChart) {
+                authRangeChart.data.labels = d.labels;
+                authRangeChart.data.datasets[0].data = d.accepts;
+                authRangeChart.data.datasets[1].data = d.rejects;
+                authRangeChart.data.datasets[2].data = d.other;
+                authRangeChart.update();
+            } else {
+                authRangeChart = new Chart(authRangeCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: d.labels,
+                        datasets: [
+                            {
+                                label: 'Accept',
+                                data: d.accepts,
+                                backgroundColor: palette.green,
+                                borderRadius: 4,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8,
                             },
-                            label: function (ctx) {
-                                var total = d.total[ctx.dataIndex] || 1;
-                                var pct = total > 0 ? ((ctx.parsed.y / total) * 100).toFixed(1) : '0.0';
-                                return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' (' + pct + '%)';
+                            {
+                                label: 'Reject',
+                                data: d.rejects,
+                                backgroundColor: palette.red,
+                                borderRadius: 4,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8,
                             },
-                        }),
+                            {
+                                label: 'Other',
+                                data: d.other,
+                                backgroundColor: palette.amber,
+                                borderRadius: 4,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8,
+                            },
+                        ],
                     },
-                    scales: {
-                        x: { stacked: true, grid: gridStyle(), ticks: tickStyle(12) },
-                        y: { stacked: true, beginAtZero: true, grid: gridStyle(), ticks: Object.assign(tickStyle(), { precision: 0 }) },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { labels: { usePointStyle: true, padding: 16 } },
+                            tooltip: professionalTooltip({
+                                afterTitle: function (items) {
+                                    var idx = items[0].dataIndex;
+                                    return 'Total: ' + (authRangeCurrent.total[idx] || 0).toLocaleString() + ' attempts';
+                                },
+                                label: function (ctx) {
+                                    var total = authRangeCurrent.total[ctx.dataIndex] || 1;
+                                    var pct = total > 0 ? ((ctx.parsed.y / total) * 100).toFixed(1) : '0.0';
+                                    return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' (' + pct + '%)';
+                                },
+                            }),
+                        },
+                        scales: {
+                            x: { stacked: true, grid: gridStyle(), ticks: tickStyle(12) },
+                            y: { stacked: true, beginAtZero: true, grid: gridStyle(), ticks: Object.assign(tickStyle(), { precision: 0 }) },
+                        },
                     },
-                },
-            });
+                });
+            }
 
             // Update summary
             var summaryEl = document.getElementById('authRangeSummary');
@@ -781,79 +790,87 @@ $fullPayload = [
         var bwRangeCanvas = document.getElementById('bwRangeChart');
         var bwRangeChart = null;
         var bwRangeData = payload.bandwidthByRange;
+        var bwRangeCurrent = null;
 
         function buildBwRange(range) {
             var d = bwRangeData[range] || bwRangeData['daily'];
-            if (bwRangeChart) bwRangeChart.destroy();
+            bwRangeCurrent = d;
 
-            bwRangeChart = new Chart(bwRangeCanvas, {
-                type: 'line',
-                data: {
-                    labels: d.labels,
-                    datasets: [
-                        {
-                            label: 'Upload (MB)',
-                            data: d.input,
-                            borderColor: palette.teal,
-                            backgroundColor: palette.tealBg,
-                            borderWidth: 2.5,
-                            pointRadius: 3,
-                            pointHoverRadius: 6,
-                            pointBackgroundColor: palette.teal,
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            tension: 0.35,
-                            fill: true,
-                        },
-                        {
-                            label: 'Download (MB)',
-                            data: d.output,
-                            borderColor: palette.navy,
-                            backgroundColor: palette.navyBg,
-                            borderWidth: 2.5,
-                            pointRadius: 3,
-                            pointHoverRadius: 6,
-                            pointBackgroundColor: palette.navy,
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            tension: 0.35,
-                            fill: true,
-                        },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { labels: { usePointStyle: true, padding: 16 } },
-                        tooltip: professionalTooltip({
-                            afterTitle: function (items) {
-                                var idx = items[0].dataIndex;
-                                var totalMb = (d.input[idx] || 0) + (d.output[idx] || 0);
-                                return 'Total: ' + formatBytes(totalMb * 1048576) + ' | Sessions: ' + (d.sessions[idx] || 0) + ' | Users: ' + (d.users[idx] || 0);
+            if (bwRangeChart) {
+                bwRangeChart.data.labels = d.labels;
+                bwRangeChart.data.datasets[0].data = d.input;
+                bwRangeChart.data.datasets[1].data = d.output;
+                bwRangeChart.update();
+            } else {
+                bwRangeChart = new Chart(bwRangeCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: d.labels,
+                        datasets: [
+                            {
+                                label: 'Upload (MB)',
+                                data: d.input,
+                                borderColor: palette.teal,
+                                backgroundColor: palette.tealBg,
+                                borderWidth: 2.5,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: palette.teal,
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                tension: 0.35,
+                                fill: true,
                             },
-                            label: function (ctx) {
-                                return ' ' + ctx.dataset.label + ': ' + formatBytes(ctx.parsed.y * 1048576);
+                            {
+                                label: 'Download (MB)',
+                                data: d.output,
+                                borderColor: palette.navy,
+                                backgroundColor: palette.navyBg,
+                                borderWidth: 2.5,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: palette.navy,
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                tension: 0.35,
+                                fill: true,
                             },
-                        }),
+                        ],
                     },
-                    scales: {
-                        x: { grid: gridStyle(), ticks: tickStyle(12) },
-                        y: {
-                            beginAtZero: true,
-                            grid: gridStyle(),
-                            ticks: Object.assign(tickStyle(), {
-                                callback: function (val) {
-                                    if (val >= 1024) return (val / 1024).toFixed(1) + ' GB';
-                                    return val + ' MB';
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { labels: { usePointStyle: true, padding: 16 } },
+                            tooltip: professionalTooltip({
+                                afterTitle: function (items) {
+                                    var idx = items[0].dataIndex;
+                                    var totalMb = (bwRangeCurrent.input[idx] || 0) + (bwRangeCurrent.output[idx] || 0);
+                                    return 'Total: ' + formatBytes(totalMb * 1048576) + ' | Sessions: ' + (bwRangeCurrent.sessions[idx] || 0) + ' | Users: ' + (bwRangeCurrent.users[idx] || 0);
+                                },
+                                label: function (ctx) {
+                                    return ' ' + ctx.dataset.label + ': ' + formatBytes(ctx.parsed.y * 1048576);
                                 },
                             }),
-                            title: { display: true, text: 'Traffic', color: '#64748b', font: { size: 11, weight: '700' } },
+                        },
+                        scales: {
+                            x: { grid: gridStyle(), ticks: tickStyle(12) },
+                            y: {
+                                beginAtZero: true,
+                                grid: gridStyle(),
+                                ticks: Object.assign(tickStyle(), {
+                                    callback: function (val) {
+                                        if (val >= 1024) return (val / 1024).toFixed(1) + ' GB';
+                                        return val + ' MB';
+                                    },
+                                }),
+                                title: { display: true, text: 'Traffic', color: '#64748b', font: { size: 11, weight: '700' } },
+                            },
                         },
                     },
-                },
-            });
+                });
+            }
 
             // Update summary
             var summaryEl = document.getElementById('bwRangeSummary');
