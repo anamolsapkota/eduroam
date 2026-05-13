@@ -42,14 +42,11 @@ $tempFilePath = "$statsDir/$outputFilename";
 
 // Extract today's log lines
 // FreeRADIUS log format typically starts with a date like "Mon May 12 14:30:00 2026"
-// We match lines containing today's date components
-$monthDay = date('M') . ' ' . ltrim(date('d'), '0');
-$monthDayPadded = date('M') . '  ' . ltrim(date('d'), '0');
+// We match lines starting with today's date components
 $year = date('Y');
 
 // Use grep to efficiently extract matching lines
-$grepPattern = escapeshellarg("$monthDay .* $year\|$monthDayPadded .* $year");
-$cmd = "grep -E " . escapeshellarg(date('M') . ' +' . ltrim(date('d'), '0') . ' .* ' . $year) . " " . escapeshellarg($logPath) . " > " . escapeshellarg($tempFilePath) . " 2>/dev/null";
+$cmd = "grep -E " . escapeshellarg('^' . date('M') . ' +' . ltrim(date('d'), '0') . ' .* ' . $year) . " " . escapeshellarg($logPath) . " > " . escapeshellarg($tempFilePath) . " 2>/dev/null";
 shell_exec($cmd);
 
 // If grep found nothing, try copying the whole log as fallback (the log may already be rotated daily)
@@ -66,10 +63,10 @@ if (!file_exists($tempFilePath) || filesize($tempFilePath) === 0) {
 $remotePath = escapeshellarg("$remote:$drivePath/$serverName/");
 $localFile = escapeshellarg($tempFilePath);
 $rcloneCmd = "rclone copy $localFile $remotePath --log-level ERROR 2>&1";
-$output = shell_exec($rcloneCmd);
+exec($rcloneCmd, $outputLines, $exitCode);
 
-if (!empty(trim((string) $output))) {
-    echo "rclone error: $output\n";
+if ($exitCode !== 0) {
+    echo "rclone error (exit $exitCode): " . implode("\n", $outputLines) . "\n";
     // Keep the temp file for debugging
     exit(1);
 }
