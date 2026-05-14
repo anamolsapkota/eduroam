@@ -15,11 +15,23 @@ function generateRandomPassword($length = 8)
     return $password;
 }
 
-// Define the allowed URL
-$allowed_url = $site_baseurl . 'eduroam/management.php';
+// Define the allowed URLs
+$allowed_urls = array(
+    $site_baseurl . 'eduroam/management.php',
+    $site_baseurl . 'eduroam/admin/',
+);
 
-// Check if the request is an AJAX request and the referring URL matches the allowed URL
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], $allowed_url) === 0) {
+// Check if the request is an AJAX request and the referring URL matches an allowed URL
+$referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+$referer_valid = false;
+foreach ($allowed_urls as $url) {
+    if (strpos($referer, $url) === 0) {
+        $referer_valid = true;
+        break;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $referer_valid) {
     // Include your database connection code here
     include 'db.php';
 
